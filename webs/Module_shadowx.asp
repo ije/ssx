@@ -81,8 +81,7 @@
 		<input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get(" preferred_lang "); %>" />
 		<input type="hidden" name="SystemCmd" onkeydown="onSubmitCtrl(this, ' Refresh ')" value="shadowx.sh" />
 		<input type="hidden" name="firmver" value="<% nvram_get(" firmver "); %>" />
-		<input type="hidden" id="shadowx_enable" name="shadowx_enable"
-			value='<% dbus_get_def("shadowx_enable", "0"); %>' />
+		<input type="hidden" id="shadowx_enable" name="shadowx_enable" value='<% dbus_get_def("shadowx_enable", "0"); %>' />
 		<table class="content" align="center" cellpadding="0" cellspacing="0">
 			<tr>
 				<td width="17">&nbsp;</td>
@@ -127,8 +126,7 @@
 														<div class="switch_field"
 															style="display:table-cell;float: left;">
 															<label for="switch">
-																<input id="switch" class="switch" type="checkbox"
-																	style="display: none;">
+																<input id="switch" class="switch" type="checkbox" style="display: none;">
 																<div class="switch_container">
 																	<div class="switch_bar"></div>
 																	<div class="switch_circle transition_style">
@@ -137,11 +135,16 @@
 																</div>
 															</label>
 														</div>
-														<div id="shadowx_version_show"
-															style="padding-top:5px;margin-left:230px;margin-top:0px;">
+														<div id="shadowx_version_show" style="padding-top:5px;margin-left:230px;margin-top:0px;">
 															<i>Current
 																version：<% dbus_get_def("shadowx_version", "0.0.1"); %></i>
 														</div>
+													</td>
+												</tr>
+												<tr>
+													<th>WS URI</th>
+													<td colspan="2">
+														<input type="text" maxlength="64" id="shadowx_ws_uri" name="shadowx_ws_uri" value='<% dbus_get_def("shadowx_ws_uri", ""); %>' style="width:342px;float:left;" autocorrect="off" autocapitalize="off"/>
 													</td>
 												</tr>
 											</table>
