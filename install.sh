@@ -33,7 +33,7 @@ CUR_VERSION=`/koolshare/bin/sws -v`
 dbus remove sws_version
 dbus set sws_version="$CUR_VERSION"
 dbus set softcenter_module_sws_version="$CUR_VERSION"
-dbus set softcenter_module_sws_title="ShadowWebSocket"
+dbus set softcenter_module_sws_title="Shadow WebSockets"
 dbus set softcenter_module_sws_description="Breaking the GWF"
 
 # re-enable sws

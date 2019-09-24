@@ -99,11 +99,11 @@
 									<tr>
 										<td bgcolor="#4D595D" colspan="3" valign="top">
 											<div>&nbsp;</div>
-											<div style="float:left;" class="formfonttitle">Showdow X</div>
+											<div style="float:left;" class="formfonttitle">Showdow Websockets</div>
 											<div style="float:right; width:15px; height:25px;margin-top:10px">
 												<img id="return_btn" onclick="reload_Soft_Center();" align="right"
 													style="cursor:pointer;position:absolute;margin-left:-30px;margin-top:-25px;"
-													title="返回软件中心" src="/images/backprev.png"
+													title="Back to Software Center" src="/images/backprev.png"
 													onMouseOver="this.src='/images/backprevclick.png'"
 													onMouseOut="this.src='/images/backprev.png'"></img>
 											</div>
