@@ -5,18 +5,17 @@ import (
 	"io"
 	"log"
 	"net"
-	"sync"
 	"time"
 
 	"golang.org/x/net/proxy"
 )
 
-type TProxy struct {
+type TransProxy struct {
 	Port      uint16
 	SocksPort uint16
 }
 
-func (t *TProxy) Serve() (err error) {
+func (t *TransProxy) Serve() (err error) {
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", t.Port))
 	if err != nil {
 		return
@@ -33,15 +32,14 @@ func (t *TProxy) Serve() (err error) {
 	}
 }
 
-func (t *TProxy) handleConn(conn net.Conn) {
+func (t *TransProxy) handleConn(conn net.Conn) {
 	dstHost, dstPort, conn, err := getOriginalDst(conn.(*net.TCPConn))
 	if err != nil {
 		log.Println("[ERR] shadowX: failed to get original destination host and port:", err)
 		return
 	}
 	defer conn.Close()
-
-	log.Println("[dstHost, dstPort]", dstHost, dstPort)
+	
 
 	err = conn.(*net.TCPConn).SetKeepAlive(true)
 	if err != nil {
@@ -71,16 +69,14 @@ func (t *TProxy) handleConn(conn net.Conn) {
 	t.proxyConn(conn, rConn)
 }
 
-func (t *TProxy) proxyConn(conn net.Conn, rConn net.Conn) {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go t.copyConn(rConn, conn, &wg)
-	go t.copyConn(conn, rConn, &wg)
-	wg.Wait()
+func (t *TransProxy) proxyConn(conn net.Conn, rConn net.Conn) {
+	closeCh := make(chan struct{}, 2)
+	go t.copyConn(conn, rConn, closeCh)
+	go t.copyConn(rConn, conn, closeCh)
+	<-closeCh
 }
 
-func (t *TProxy) copyConn(dst net.Conn, src net.Conn, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func (t *TransProxy) copyConn(dst net.Conn, src net.Conn, closeCh chan struct{}) {
 	io.Copy(dst, src)
+	closeCh <- struct{}{}
 }

@@ -28,6 +28,7 @@ func getOriginalDst(clientConn *net.TCPConn) (host string, port uint16, newTCPCo
 		err = errors.New("ERR: clientConn is nil")
 		return
 	}
+	defer clientConn.Close()
 
 	// test if the underlying fd is nil
 	remoteAddr := clientConn.RemoteAddr()
@@ -44,7 +45,6 @@ func getOriginalDst(clientConn *net.TCPConn) (host string, port uint16, newTCPCo
 	if err != nil {
 		return
 	}
-	clientConn.Close()
 	defer clientConnFile.Close()
 
 	// Get original destination
@@ -67,6 +67,7 @@ func getOriginalDst(clientConn *net.TCPConn) (host string, port uint16, newTCPCo
 
 	newTCPConn, ok := newConn.(*net.TCPConn)
 	if !ok {
+		newConn.Close()
 		err = fmt.Errorf("ERR: newConn is not a *net.TCPConn, instead it is: %T (%v)", newConn, newConn)
 		return
 	}

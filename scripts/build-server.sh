@@ -8,12 +8,12 @@ fi
 export GOOS=$goos
 
 goarch="amd64"
-read -p "please enter the deploy OS Arch.(default is 'amd64'): " arch
+read -p "please enter the deploy OS Arch(default is 'amd64'): " arch
 if [ "$arch" != "" ]; then
 	goarch="$arch"
 fi
 export GOARCH=$goarch
 
-echo "--- compiling the w.orld(${goos}_$goarch)..."
-cd ../src/shadowx-server
-go build -o ../../bin/shadowx-server main.go
+echo "--- compiling the sms-server(${goos}_$goarch)..."
+cd ../src/sws-server
+go build -o ../../bin/sws-server main.go

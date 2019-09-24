@@ -30,36 +30,36 @@ fi
 
 echo "--- uploading..."
 if [ "$init" = "yes" ]; then
-    scp -P $hostSSHPort supervisor.conf $loginUser@$host:/etc/supervisor/conf.d/shadowx-server.conf
+    scp -P $hostSSHPort supervisor.conf $loginUser@$host:/etc/supervisor/conf.d/sws-server.conf
     if [ "$?" != "0" ]; then
         exit
     fi
 fi
 
 cd ../bin
-scp -P $hostSSHPort shadowx-server $loginUser@$host:/tmp/shadowx-server
+scp -P $hostSSHPort sws-server $loginUser@$host:/tmp/sws-server
 if [ "$?" != "0" ]; then
-    rm shadowx-server
+    rm sws-server
     exit
 fi
 
-echo "--- restart shadowx-server..."
+echo "--- restart sws-server..."
 ssh -p $hostSSHPort $loginUser@$host << EOF
-    supervisorctl status shadowx-server
+    supervisorctl status sws-server
     if [ "$?" != "0" ]; then
         echo "error: no supervisor installed!"
         exit
     fi
-    supervisorctl stop shadowx-server
-    rm -f /usr/local/bin/shadowx-server
-    mv -f /tmp/shadowx-server /usr/local/bin/shadowx-server
-    chmod +x /usr/local/bin/shadowx-server
+    supervisorctl stop sws-server
+    rm -f /usr/local/bin/sws-server
+    mv -f /tmp/sws-server /usr/local/bin/sws-server
+    chmod +x /usr/local/bin/sws-server
     if [ "$init" = "yes" ]; then
-        /usr/local/bin/shadowx-server -i
+        /usr/local/bin/sws-server -i
         supervisorctl reload
     else
-        supervisorctl start shadowx-server
+        supervisorctl start sws-server
     fi
 EOF
 
-rm shadowx-server
+rm sws-server

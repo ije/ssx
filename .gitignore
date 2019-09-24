@@ -1,3 +1,3 @@
 .DS_Store
-bin/shadowx
-bin/shadowx-server
+bin/sws
+bin/sws-server

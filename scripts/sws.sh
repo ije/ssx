@@ -1,10 +1,10 @@
 #!/bin/sh
 
 # load path environment in dbus databse
-eval `dbus export shadowx`
+eval `dbus export sws`
 source /koolshare/scripts/base.sh
 lan_ipaddr=$(nvram get lan_ipaddr)
-ws_uri=`echo $shadowx_ws_uri|grep -E "wss?://[a-zA-Z0-9\-\.]+.*"`
+ws_uri=`echo $sws_ws_uri|grep -E "wss?://[a-zA-Z0-9\-\.]+.*"`
 
 SOCKS5_PORT=1086
 TPROXY_PORT=1087
@@ -12,17 +12,17 @@ DNS=1.2.4.8
 DNS_PORT=5300
 DNS2SOCKS_PORT=5380
 DNSMASQ_POSTCONF=/jffs/scripts/dnsmasq.postconf
-CHINA_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/accelerated-domains.china.conf
+CHINA_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/china.conf
 GFWLIST_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/gfwlist.conf
 WS_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/ws.conf
 
 # check platform
 case $(uname -m) in
     armv7l)
-        echo "start installing shadowx..."
+        echo "start installing sws..."
     ;;
     *)
-        echo "[error] shadowx can't run in \"$(uname -m)\", needs koolshare merlin armv7l!"
+        echo "[error] sws can't run in \"$(uname -m)\", needs koolshare merlin armv7l!"
         exit 1
     ;;
 esac
@@ -68,33 +68,33 @@ create_ipset() {
 }
 
 apply_nat_rules() {
-    iptables -t nat -N SHADOWX_GFW
+    iptables -t nat -N SWS
 
     # ignore server ip
-    host=`echo $shadowx_ws_uri | awk -F/ '{print $3}'`
+    host=`echo $sws_ws_uri | awk -F/ '{print $3}'`
     ip=`ping -c 1 $host | grep PING | awk -F\( '{print $2}' | awk -F\) '{print $1}'`
-    iptables -t nat -A SHADOWX_GFW -d $ip -j RETURN
+    iptables -t nat -A SWS -d $ip -j RETURN
 
-    # ignore internal ip
-    iptables -t nat -A SHADOWX_GFW -d 0.0.0.0/8 -j RETURN
-    iptables -t nat -A SHADOWX_GFW -d 10.0.0.0/8 -j RETURN
-    iptables -t nat -A SHADOWX_GFW -d 100.64.0.0/10 -j RETURN
-    iptables -t nat -A SHADOWX_GFW -d 127.0.0.0/8 -j RETURN
-    iptables -t nat -A SHADOWX_GFW -d 169.254.0.0/16 -j RETURN
-    iptables -t nat -A SHADOWX_GFW -d 172.16.0.0/12 -j RETURN
-    iptables -t nat -A SHADOWX_GFW -d 192.168.0.0/16 -j RETURN
-    iptables -t nat -A SHADOWX_GFW -d 224.0.0.0/4 -j RETURN
-    iptables -t nat -A SHADOWX_GFW -d 240.0.0.0/4 -j RETURN
-    iptables -t nat -A SHADOWX_GFW -d $(get_wan0_cidr) -j RETURN
+    # ignore internal ips
+    iptables -t nat -A SWS -d 0.0.0.0/8 -j RETURN
+    iptables -t nat -A SWS -d 10.0.0.0/8 -j RETURN
+    iptables -t nat -A SWS -d 100.64.0.0/10 -j RETURN
+    iptables -t nat -A SWS -d 127.0.0.0/8 -j RETURN
+    iptables -t nat -A SWS -d 169.254.0.0/16 -j RETURN
+    iptables -t nat -A SWS -d 172.16.0.0/12 -j RETURN
+    iptables -t nat -A SWS -d 192.168.0.0/16 -j RETURN
+    iptables -t nat -A SWS -d 224.0.0.0/4 -j RETURN
+    iptables -t nat -A SWS -d 240.0.0.0/4 -j RETURN
+    iptables -t nat -A SWS -d $(get_wan0_cidr) -j RETURN
 
     # allow connection to chinese IPs
-    iptables -t nat -A SHADOWX_GFW -p tcp -m set --match-set chnroute dst -j RETURN
+    iptables -t nat -A SWS -p tcp -m set --match-set chnroute dst -j RETURN
     
-    # redirect gfwlist ip
-    iptables -t nat -A SHADOWX_GFW -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports $TPROXY_PORT
+    # redirect gfwlist ips
+    iptables -t nat -A SWS -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports $TPROXY_PORT
 
     # apply chain to table
-    iptables -t nat -I PREROUTING -p tcp -j SHADOWX_GFW
+    iptables -t nat -I PREROUTING -p tcp -j SWS
 
     # enable chromecast
     chromecast_nu=`iptables -t nat -L PREROUTING -v -n --line-numbers | grep "dpt:53" | awk '{print $1}'`
@@ -105,14 +105,14 @@ apply_nat_rules() {
 
 flush_nat() {
     # flush rules and set if any
-	nat_indexs=`iptables -nvL PREROUTING -t nat | sed 1,2d | sed -n '/SHADOWX_GFW/=' | sort -r`
+	nat_indexs=`iptables -nvL PREROUTING -t nat | sed 1,2d | sed -n '/SWS/=' | sort -r`
 	for nat_index in $nat_indexs
 	do
         iptables -t nat -D PREROUTING $nat_index >/dev/null 2>&1
 	done
 
-    iptables -t nat -F SHADOWX_GFW >/dev/null 2>&1
-    iptables -t nat -X SHADOWX_GFW >/dev/null 2>&1
+    iptables -t nat -F SWS >/dev/null 2>&1
+    iptables -t nat -X SWS >/dev/null 2>&1
 
     ipset destroy chnroute >/dev/null 2>&1
     ipset destroy gfwlist >/dev/null 2>&1
@@ -125,24 +125,24 @@ flush_nat() {
 }
 
 create_dnsmasq_conf() {
-    [ ! -L "$DNSMASQ_POSTCONF" ] && ln -sf /koolshare/configs/shadowx_dnsmasq.postconf $DNSMASQ_POSTCONF
-    cp -rf /koolshare/configs/accelerated-domains.china.conf $CHINA_DNSMASQ_CONFIG
-    cp -rf /koolshare/configs/gfwlist.conf $GFWLIST_DNSMASQ_CONFIG
-    host=`echo $shadowx_ws_uri | awk -F/ '{print $3}'`
+    [ ! -L "$DNSMASQ_POSTCONF" ] && ln -sf /koolshare/configs/sws_dnsmasq.postconf $DNSMASQ_POSTCONF
+    host=`echo $sws_ws_uri | awk -F/ '{print $3}'`
     echo "server=/$host/$DNS" > $WS_DNSMASQ_CONFIG
+    cat /koolshare/configs/china-domains.txt | sed "s/^/server=&\/./g" | sed "s/$/\/&$DNS/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CHINA_DNSMASQ_CONFIG
+    cp -rf /koolshare/configs/gfwlist.conf $GFWLIST_DNSMASQ_CONFIG
 }
 
 flush_dnsmasq_conf() {
-    rm -rf $DNSMASQ_POSTCONF
+    rm -f $DNSMASQ_POSTCONF
     rm -f $CHINA_DNSMASQ_CONFIG
     rm -f $GFWLIST_DNSMASQ_CONFIG
     rm -f $WS_DNSMASQ_CONFIG
 }
 
-start_shadowx() {
+start_sws() {
     echo "starting shadow X..."
 
-    /koolshare/bin/shadowx -p $SOCKS5_PORT -tProxy $TPROXY_PORT -ws $shadowx_ws_uri >/dev/null 2>&1 &
+    /koolshare/bin/sws -p $SOCKS5_PORT -tProxy $TPROXY_PORT -ws $sws_ws_uri >/dev/null 2>&1 &
     /koolshare/bin/dns2socks 127.0.0.1:$SOCKS5_PORT 8.8.8.8:53 127.0.0.1:$DNS2SOCKS_PORT >/dev/null 2>&1 &
     /koolshare/bin/chinadns -s $DNS,127.0.0.1:$DNS2SOCKS_PORT -c /koolshare/configs/chnroute.txt -m -p $DNS_PORT >/dev/null 2>&1 &
 
@@ -154,14 +154,14 @@ start_shadowx() {
 
     # try to create start_up file
     if [ ! -L "/koolshare/init.d/S97Shadowx.sh" ]; then 
-        ln -sf /koolshare/scripts/shadowx.sh /koolshare/init.d/S97Shadowx.sh
+        ln -sf /koolshare/scripts/sws.sh /koolshare/init.d/S97Shadowx.sh
     fi
 }
 
-stop_shadowx() {
+stop_sws() {
     echo "stopping shadow X..."
 
-    killall shadowx chinadns dns2socks >/dev/null 2>&1
+    killall sws chinadns dns2socks >/dev/null 2>&1
 
     flush_dnsmasq_conf
     service restart_dnsmasq
@@ -170,17 +170,17 @@ stop_shadowx() {
 
 case $ACTION in
 start)
-    if [ "$shadowx_enable" == "1" -a "$ws_uri" != "" ]; then
-        start_shadowx 
+    if [ "$sws_enable" == "1" -a "$ws_uri" != "" ]; then
+        start_sws 
     fi
     ;;
 stop)
-    stop_shadowx
+    stop_sws
     ;;
 *)
-    stop_shadowx
-    if [ "$shadowx_enable" == "1" -a "$ws_uri" != "" ]; then
-        start_shadowx
+    stop_sws
+    if [ "$sws_enable" == "1" -a "$ws_uri" != "" ]; then
+        start_sws
     fi
     ;;
 esac

@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strings"
 )
 
 const (
@@ -159,13 +158,14 @@ func (s *Server) ServeConn(conn net.Conn) error {
 	}
 
 	// Process the client request
-	if err := s.handleRequest(request, conn); err != nil {
-		if !strings.Contains(err.Error(), "websocket: close 1000 (normal)") {
-			err = fmt.Errorf("Failed to handle request: %v", err)
-			s.config.Logger.Printf("[ERR] socks: %v", err)
-			return err
-		}
-	}
+	err = s.handleRequest(request, conn)
+	// if err != nil {
+	// 	if !strings.Contains(err.Error(), "websocket: close 1000 (normal)") {
+	// 		err = fmt.Errorf("Failed to handle request: %v", err)
+	// 		s.config.Logger.Printf("[ERR] socks: %v", err)
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }

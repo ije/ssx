@@ -15,7 +15,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-func Serve(w http.ResponseWriter, r *http.Request, debug bool) {
+func WS(w http.ResponseWriter, r *http.Request, debug bool) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {
@@ -29,7 +29,7 @@ func Serve(w http.ResponseWriter, r *http.Request, debug bool) {
 
 	s5, err := socks5.New(&socks5.Config{})
 	if err != nil {
-		log.Println("socks5.New", err)
+		log.Println("create socks5:", err)
 		return
 	}
 	s5.ServeConn(conn)

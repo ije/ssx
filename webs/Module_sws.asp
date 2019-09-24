@@ -24,7 +24,7 @@
 	<script type="text/javascript" src="/general.js"></script>
 	<script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 	<script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
-	<script type="text/javascript" src="/dbconf?p=shadowx_&v=<% uptime(); %>"></script>
+	<script type="text/javascript" src="/dbconf?p=sws_&v=<% uptime(); %>"></script>
 	<script>
 		var $j = jQuery.noConflict()
 		function init() {
@@ -34,13 +34,13 @@
 
 		function buildSwitch() {
 			var $el = $j("#switch")
-			if (document.form.shadowx_enable.value != "1") {
+			if (document.form.sws_enable.value != "1") {
 				$el[0].checked = false
 			} else {
 				$el[0].checked = true
 			}
 			$j("#switch").click(function () {
-				document.form.shadowx_enable.value = $el[0].checked ? '1' : '0'
+				document.form.sws_enable.value = $el[0].checked ? '1' : '0'
 			})
 		}
 
@@ -60,7 +60,7 @@
 
 		function menu_hook(title, tab) {
 			tabtitle[tabtitle.length - 1] = new Array("", "Shadow X")
-			tablink[tablink.length - 1] = new Array("", "Module_shadowx.asp")
+			tablink[tablink.length - 1] = new Array("", "Module_sws.asp")
 		}
 	</script>
 </head>
@@ -69,9 +69,9 @@
 	<div id="TopBanner"></div>
 	<div id="Loading" class="popup_bg"></div>
 	<iframe name="hidden_frame" id="hidden_frame" src="" width="0" height="0" frameborder="0"></iframe>
-	<form method="POST" name="form" action="/applydb.cgi?p=shadowx_" target="hidden_frame">
-		<input type="hidden" name="current_page" value="Module_shadowx.asp" />
-		<input type="hidden" name="next_page" value="Module_shadowx.asp" />
+	<form method="POST" name="form" action="/applydb.cgi?p=sws_" target="hidden_frame">
+		<input type="hidden" name="current_page" value="Module_sws.asp" />
+		<input type="hidden" name="next_page" value="Module_sws.asp" />
 		<input type="hidden" name="group_id" value="" />
 		<input type="hidden" name="modified" value="0" />
 		<input type="hidden" name="action_mode" value="" />
@@ -79,9 +79,9 @@
 		<input type="hidden" name="action_wait" value="5" />
 		<input type="hidden" name="first_time" value="" />
 		<input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get(" preferred_lang "); %>" />
-		<input type="hidden" name="SystemCmd" onkeydown="onSubmitCtrl(this, ' Refresh ')" value="shadowx.sh" />
+		<input type="hidden" name="SystemCmd" onkeydown="onSubmitCtrl(this, ' Refresh ')" value="sws.sh" />
 		<input type="hidden" name="firmver" value="<% nvram_get(" firmver "); %>" />
-		<input type="hidden" id="shadowx_enable" name="shadowx_enable" value='<% dbus_get_def("shadowx_enable", "0"); %>' />
+		<input type="hidden" id="sws_enable" name="sws_enable" value='<% dbus_get_def("sws_enable", "0"); %>' />
 		<table class="content" align="center" cellpadding="0" cellspacing="0">
 			<tr>
 				<td width="17">&nbsp;</td>
@@ -114,7 +114,7 @@
 											<div class="formfontdesc" id="cmdDesc"></div>
 											<table style="margin:10px 0px 0px 0px;" width="100%" border="1"
 												align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"
-												class="FormTable" id="shadowx_table">
+												class="FormTable" id="sws_table">
 												<thead>
 													<tr>
 														<td colspan="2">Options</td>
@@ -135,16 +135,16 @@
 																</div>
 															</label>
 														</div>
-														<div id="shadowx_version_show" style="padding-top:5px;margin-left:230px;margin-top:0px;">
+														<div id="sws_version_show" style="padding-top:5px;margin-left:230px;margin-top:0px;">
 															<i>Current
-																version：<% dbus_get_def("shadowx_version", "0.0.1"); %></i>
+																version：<% dbus_get_def("sws_version", "0.0.1"); %></i>
 														</div>
 													</td>
 												</tr>
 												<tr>
 													<th>WS URI</th>
 													<td colspan="2">
-														<input type="text" maxlength="64" id="shadowx_ws_uri" name="shadowx_ws_uri" value='<% dbus_get_def("shadowx_ws_uri", ""); %>' style="width:342px;float:left;" autocorrect="off" autocapitalize="off"/>
+														<input type="text" maxlength="64" id="sws_ws_uri" name="sws_ws_uri" value='<% dbus_get_def("sws_ws_uri", ""); %>' style="width:342px;float:left;" autocorrect="off" autocapitalize="off"/>
 													</td>
 												</tr>
 											</table>

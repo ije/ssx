@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -14,40 +13,6 @@ import (
 type Client struct {
 	WSUri string
 	Port  uint16
-}
-
-func (c *Client) copyConn(dst net.Conn, src net.Conn, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	io.Copy(dst, src)
-}
-
-func (c *Client) proxyConn(conn net.Conn, rConn net.Conn) {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go c.copyConn(rConn, conn, &wg)
-	go c.copyConn(conn, rConn, &wg)
-	wg.Wait()
-}
-
-func (c *Client) handleConn(conn net.Conn) {
-	defer conn.Close()
-
-	dialer := &websocket.Dialer{
-		ReadBufferSize:   4 * 1024,
-		WriteBufferSize:  4 * 1024,
-		HandshakeTimeout: 10 * time.Second,
-	}
-	ws, _, err := dialer.Dial(c.WSUri, nil)
-	if err != nil {
-		log.Println("[ERR] shadowX: failed to dial websocket:", err)
-		return
-	}
-
-	wsConn := NewConn(ws)
-	defer wsConn.Close()
-
-	c.proxyConn(conn, wsConn)
 }
 
 func (c *Client) Serve() (err error) {
@@ -77,4 +42,36 @@ func (c *Client) Serve() (err error) {
 
 		go c.handleConn(conn)
 	}
+}
+
+func (c *Client) handleConn(conn net.Conn) {
+	defer conn.Close()
+
+	dialer := &websocket.Dialer{
+		ReadBufferSize:   4 * 1024,
+		WriteBufferSize:  4 * 1024,
+		HandshakeTimeout: 10 * time.Second,
+	}
+	ws, _, err := dialer.Dial(c.WSUri, nil)
+	if err != nil {
+		log.Println("[ERR] shadowX: failed to dial websocket:", err)
+		return
+	}
+
+	wsConn := NewConn(ws)
+	defer wsConn.Close()
+
+	c.proxyConn(conn, wsConn)
+}
+
+func (c *Client) proxyConn(conn net.Conn, rConn net.Conn) {
+	closeCh := make(chan struct{}, 2)
+	go c.copyConn(conn, rConn, closeCh)
+	go c.copyConn(rConn, conn, closeCh)
+	<-closeCh
+}
+
+func (c *Client) copyConn(dst net.Conn, src net.Conn, closeCh chan struct{}) {
+	io.Copy(dst, src)
+	closeCh <- struct{}{}
 }

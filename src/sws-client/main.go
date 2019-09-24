@@ -6,12 +6,12 @@ import (
 	"shadowx-client/client"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func main() {
 	ws := flag.String("ws", "ws://localhost/api/ws", "server ws uri")
 	sp := flag.Int("p", 1086, "local socks5 port")
-	tp := flag.Int("tProxy", 1087, "local tpc proxy port")
+	tp := flag.Int("tProxy", 1087, "local tpc transparent proxy port")
 	v := flag.Bool("v", false, "print shadowx client version")
 	flag.Parse()
 
@@ -20,7 +20,7 @@ func main() {
 		return
 	}
 
-	tProxy := &client.TProxy{
+	tProxy := &client.TransProxy{
 		SocksPort: uint16(*sp),
 		Port:      uint16(*tp),
 	}

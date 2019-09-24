@@ -4,13 +4,13 @@ export GOARCH=arm
 export GOARM=5
 export GOOS=linux
 
-rm -f ../bin/shadowx
-echo "--- compiling shadowx-client(${GOOS}_$GOARCH)..."
-cd ../src/shadowx-client
-go build -o ../../bin/shadowx main.go
+rm -f ../bin/sws
+echo "--- compiling sws-client(${GOOS}_$GOARCH)..."
+cd ../src/sws-client
+go build -o ../../bin/sws main.go
 cd ../../scripts
 
-if [ ! -f "../bin/shadowx" ]; then
+if [ ! -f "../bin/sws" ]; then
 	exit 1
 fi
 
@@ -19,4 +19,4 @@ echo "--- updating configs..."
 # wget -O ../configs/accelerated-domains.china.conf https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/master/accelerated-domains.china.conf
 
 cd ../../
-tar -czf ~/Downloads/shadowx.tar.gz shadowx
+tar -czf ~/Downloads/sws.tar.gz sws
