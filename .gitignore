@@ -1,3 +1,4 @@
 .DS_Store
 bin/sws
-bin/sws-server
+scripts/ssx-server
+**/bin/ssx

@@ -14,6 +14,5 @@ if [ "$arch" != "" ]; then
 fi
 export GOARCH=$goarch
 
-echo "--- compiling the sms-server(${goos}_$goarch)..."
-cd ../src/sws-server
-go build -o ../../bin/sws-server main.go
+echo "--- compiling the ssx-server(${goos}_$goarch)..."
+go build -o ssx-server server-main.go

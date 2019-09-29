@@ -30,36 +30,35 @@ fi
 
 echo "--- uploading..."
 if [ "$init" = "yes" ]; then
-    scp -P $hostSSHPort supervisor.conf $loginUser@$host:/etc/supervisor/conf.d/sws-server.conf
+    scp -P $hostSSHPort supervisor.conf $loginUser@$host:/etc/supervisor/conf.d/ssx-server.conf
     if [ "$?" != "0" ]; then
         exit
     fi
 fi
 
-cd ../bin
-scp -P $hostSSHPort sws-server $loginUser@$host:/tmp/sws-server
+scp -P $hostSSHPort ssx-server $loginUser@$host:/tmp/ssx-server
 if [ "$?" != "0" ]; then
-    rm sws-server
+    rm ssx-server
     exit
 fi
 
-echo "--- restart sws-server..."
+echo "--- restart ssx-server..."
 ssh -p $hostSSHPort $loginUser@$host << EOF
-    supervisorctl status sws-server
+    supervisorctl status ssx-server
     if [ "$?" != "0" ]; then
         echo "error: no supervisor installed!"
         exit
     fi
-    supervisorctl stop sws-server
-    rm -f /usr/local/bin/sws-server
-    mv -f /tmp/sws-server /usr/local/bin/sws-server
-    chmod +x /usr/local/bin/sws-server
+    supervisorctl stop ssx-server
+    rm -f /usr/local/bin/ssx-server
+    mv -f /tmp/ssx-server /usr/local/bin/ssx-server
+    chmod +x /usr/local/bin/ssx-server
     if [ "$init" = "yes" ]; then
-        /usr/local/bin/sws-server -i
+        /usr/local/bin/ssx-server -i
         supervisorctl reload
     else
-        supervisorctl start sws-server
+        supervisorctl start ssx-server
     fi
 EOF
 
-rm sws-server
+rm ssx-server
