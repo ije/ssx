@@ -1,3 +1,3 @@
 # SSX
 
-**SSX** is like Shadowsocks but using websocket to transparent data in golang.
+**SSX** is like SS but using websocket to transfer data in golang.
