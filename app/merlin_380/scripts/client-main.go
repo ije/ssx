@@ -6,7 +6,7 @@ import (
 	"ssx/client"
 )
 
-const version = "0.3.0"
+const version = "0.3.1"
 
 func main() {
 	wsURI := flag.String("ws", "ws://127.0.0.1/api/ws", "server ws uri")

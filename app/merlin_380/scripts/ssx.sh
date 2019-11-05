@@ -8,7 +8,7 @@ ws_uri=`echo $ssx_ws_uri|grep -E "wss?://[a-zA-Z0-9\-\.]+.*"`
 
 SOCKS5_PORT=1086
 TPROXY_PORT=1087
-DNS=1.2.4.8
+DNS=`echo $ssx_dns`
 DNS_PORT=5300
 DNS2SOCKS_PORT=5380
 DNSMASQ_POSTCONF=/jffs/scripts/dnsmasq.postconf

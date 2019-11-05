@@ -147,6 +147,12 @@
 														<input type="text" maxlength="64" id="ssx_ws_uri" name="ssx_ws_uri" value='<% dbus_get_def("ssx_ws_uri", ""); %>' style="width:342px;float:left;" autocorrect="off" autocapitalize="off"/>
 													</td>
 												</tr>
+												<tr>
+													<th>DNS</th>
+													<td colspan="2">
+														<input type="text" maxlength="64" id="ssx_dns" name="ssx_dns" value='<% dbus_get_def("ssx_dns", ""); %>' style="width:342px;float:left;" autocorrect="off" autocapitalize="off"/>
+													</td>
+												</tr>
 											</table>
 											<div class="apply_gen">
 												<button id="cmdBtn" class="button_gen"
