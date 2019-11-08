@@ -99,7 +99,7 @@
 									<tr>
 										<td bgcolor="#4D595D" colspan="3" valign="top">
 											<div>&nbsp;</div>
-											<div style="float:left;" class="formfonttitle">Showdow Websockets</div>
+											<div style="float:left;" class="formfonttitle">Shadowsockets X</div>
 											<div style="float:right; width:15px; height:25px;margin-top:10px">
 												<img id="return_btn" onclick="reload_Soft_Center();" align="right"
 													style="cursor:pointer;position:absolute;margin-left:-30px;margin-top:-25px;"
@@ -107,11 +107,6 @@
 													onMouseOver="this.src='/images/backprevclick.png'"
 													onMouseOut="this.src='/images/backprev.png'"></img>
 											</div>
-											<div style="margin-left:5px;margin-top:10px;margin-bottom:10px">
-												<img src="/images/New_ui/export/line_export.png">
-											</div>
-											<div class="formfontdesc" id="cmdDesc">Break the GWF</div>
-											<div class="formfontdesc" id="cmdDesc"></div>
 											<table style="margin:10px 0px 0px 0px;" width="100%" border="1"
 												align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"
 												class="FormTable" id="ssx_table">
@@ -151,6 +146,12 @@
 													<th>DNS</th>
 													<td colspan="2">
 														<input type="text" maxlength="64" id="ssx_dns" name="ssx_dns" value='<% dbus_get_def("ssx_dns", ""); %>' style="width:342px;float:left;" autocorrect="off" autocapitalize="off"/>
+													</td>
+												</tr>
+												<tr>
+													<th>Custom Domains</th>
+													<td colspan="2">
+														<textarea id="ssx_custom_domains" name="ssx_custom_domains" style="width:342px;float:left;" rows="6" autocorrect="off" autocapitalize="off"><% dbus_get_def("ssx_custom_domains", ""); %></textarea>
 													</td>
 												</tr>
 											</table>

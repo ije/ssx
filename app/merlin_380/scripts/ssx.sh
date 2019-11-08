@@ -6,15 +6,16 @@ source /koolshare/scripts/base.sh
 lan_ipaddr=$(nvram get lan_ipaddr)
 ws_uri=`echo $ssx_ws_uri|grep -E "wss?://[a-zA-Z0-9\-\.]+.*"`
 
+DNS2SOCKS_PORT=1085
 SOCKS5_PORT=1086
 TPROXY_PORT=1087
+LOCAL_DNS_PORT=5300
 DNS=`echo $ssx_dns`
-DNS_PORT=5300
-DNS2SOCKS_PORT=5380
 DNSMASQ_POSTCONF=/jffs/scripts/dnsmasq.postconf
+WS_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/ws.conf
+CUSTOM_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/custom.conf
 CHINA_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/china.conf
 GFWLIST_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/gfwlist.conf
-WS_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/ws.conf
 
 # check platform
 case $(uname -m) in
@@ -128,15 +129,18 @@ create_dnsmasq_conf() {
     [ ! -L "$DNSMASQ_POSTCONF" ] && ln -sf /koolshare/configs/ssx_dnsmasq.postconf $DNSMASQ_POSTCONF
     host=`echo $ssx_ws_uri | awk -F/ '{print $3}'`
     echo "server=/$host/$DNS" > $WS_DNSMASQ_CONFIG
+    echo "$ssx_custom_domains" | sed "s/^/server=&\/./g" | sed "s/$/\/127\.0\.0\.1#&$LOCAL_DNS_PORT/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CUSTOM_DNSMASQ_CONFIG
+    echo "$ssx_custom_domains" | sed "s/^/ipset=&\/./g" | sed "s/$/\/gfwlist/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CUSTOM_DNSMASQ_CONFIG
     cat /koolshare/configs/china-domains.txt | sed "s/^/server=&\/./g" | sed "s/$/\/&$DNS/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CHINA_DNSMASQ_CONFIG
     cp -rf /koolshare/configs/gfwlist.conf $GFWLIST_DNSMASQ_CONFIG
 }
 
 flush_dnsmasq_conf() {
     rm -f $DNSMASQ_POSTCONF
+    rm -f $WS_DNSMASQ_CONFIG
+    rm -f $CUSTOM_DNSMASQ_CONFIG
     rm -f $CHINA_DNSMASQ_CONFIG
     rm -f $GFWLIST_DNSMASQ_CONFIG
-    rm -f $WS_DNSMASQ_CONFIG
 }
 
 start_ssx() {
@@ -144,7 +148,7 @@ start_ssx() {
 
     /koolshare/bin/ssx -ws $ssx_ws_uri -socks $SOCKS5_PORT -transporxy $TPROXY_PORT >/dev/null 2>&1 &
     /koolshare/bin/dns2socks 127.0.0.1:$SOCKS5_PORT 8.8.8.8:53 127.0.0.1:$DNS2SOCKS_PORT >/dev/null 2>&1 &
-    /koolshare/bin/chinadns -s $DNS,127.0.0.1:$DNS2SOCKS_PORT -c /koolshare/configs/chnroute.txt -m -p $DNS_PORT >/dev/null 2>&1 &
+    /koolshare/bin/chinadns -s $DNS,127.0.0.1:$DNS2SOCKS_PORT -c /koolshare/configs/chnroute.txt -m -p $LOCAL_DNS_PORT >/dev/null 2>&1 &
 
     load_module
     create_ipset
