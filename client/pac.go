@@ -8,7 +8,7 @@ import (
 type PACServer struct {
 	SocksPort  uint16
 	GFWListURI string
-	gfwDomains map[string]int
+	gfwDomains map[string]struct{}
 }
 
 func (s *PACServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {

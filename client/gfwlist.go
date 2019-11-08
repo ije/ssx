@@ -12,14 +12,14 @@ import (
 	"strings"
 )
 
-func downloadAndParseGFWList(uri string) (domains map[string]int, err error) {
+func downloadAndParseGFWList(uri string) (domains map[string]struct{}, err error) {
 	res, err := http.Get(uri)
 	if err != nil {
 		return
 	}
 	defer res.Body.Close()
 
-	domains = map[string]int{}
+	domains = map[string]struct{}{}
 
 	decoder := base64.NewDecoder(base64.StdEncoding, res.Body)
 	reader := bufio.NewReader(decoder)
@@ -35,7 +35,7 @@ func downloadAndParseGFWList(uri string) (domains map[string]int, err error) {
 
 		domain := parse(string(line))
 		if domain != "" {
-			domains[domain] = 1
+			domains[domain] = struct{}{}
 		}
 	}
 	return
