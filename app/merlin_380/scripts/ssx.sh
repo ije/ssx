@@ -4,11 +4,11 @@
 eval `dbus export ssx`
 source /koolshare/scripts/base.sh
 lan_ipaddr=$(nvram get lan_ipaddr)
-ws_uri=`echo $ssx_ws_uri|grep -E "wss?://[a-zA-Z0-9\-\.]+.*"`
+ws_uri=`echo $ssx_ws_uri | grep -E "wss?://[a-zA-Z0-9\-\.]+.*"`
 
-DNS2SOCKS_PORT=1085
 SOCKS5_PORT=1086
 TPROXY_PORT=1087
+DNS2SOCKS_PORT=1088
 LOCAL_DNS_PORT=5300
 DNS=`echo $ssx_dns`
 DNSMASQ_POSTCONF=/jffs/scripts/dnsmasq.postconf
@@ -37,20 +37,6 @@ get_lan_cidr() {
 	echo $lan_ipaddr/$suffix
 }
 
-get_wan0_cidr() {
-	netmask=`nvram get wan0_netmask`
-	local x=${netmask##*255.}
-	set -- 0^^^128^192^224^240^248^252^254^ $(( (${#netmask} - ${#x})*2 )) ${x%%.*}
-	x=${1%%$3*}
-	suffix=$(( $2 + (${#x}/4) ))
-	prefix=`nvram get wan0_ipaddr`
-	if [ -n "$prefix" -a -n "$netmask" ];then
-		echo $prefix/$suffix
-	else
-		echo ""
-	fi
-}
-
 load_module() {
 	xt=`lsmod | grep xt_set`
 	OS=$(uname -r)
@@ -62,8 +48,10 @@ load_module() {
 create_ipset() {
     ipset create chnroute nethash >/dev/null 2>&1
     ipset create gfwlist iphash >/dev/null 2>&1
+    ipset create custom iphash >/dev/null 2>&1
     ipset flush chnroute >/dev/null 2>&1
     ipset flush gfwlist >/dev/null 2>&1
+    ipset flush custom >/dev/null 2>&1
 
     sed -e "s/^/add chnroute &/g" /koolshare/configs/chnroute.txt | awk '{print $0} END{print "COMMIT"}' | ipset -R
 }
@@ -72,7 +60,7 @@ apply_nat_rules() {
     iptables -t nat -N SSX
 
     # ignore server ip
-    host=`echo $ssx_ws_uri | awk -F/ '{print $3}'`
+    host=`echo $ws_uri | awk -F/ '{print $3}'`
     ip=`ping -c 1 $host | grep PING | awk -F\( '{print $2}' | awk -F\) '{print $1}'`
     iptables -t nat -A SSX -d $ip -j RETURN
 
@@ -86,7 +74,9 @@ apply_nat_rules() {
     iptables -t nat -A SSX -d 192.168.0.0/16 -j RETURN
     iptables -t nat -A SSX -d 224.0.0.0/4 -j RETURN
     iptables -t nat -A SSX -d 240.0.0.0/4 -j RETURN
-    iptables -t nat -A SSX -d $(get_wan0_cidr) -j RETURN
+
+    # force redirect custom ips
+    iptables -t nat -A SSX -p tcp -m set --match-set custom dst -j REDIRECT --to-ports $TPROXY_PORT
 
     # allow connection to chinese IPs
     iptables -t nat -A SSX -p tcp -m set --match-set chnroute dst -j RETURN
@@ -117,6 +107,7 @@ flush_nat() {
 
     ipset destroy chnroute >/dev/null 2>&1
     ipset destroy gfwlist >/dev/null 2>&1
+    ipset destroy custom >/dev/null 2>&1
     
     # disable chromecast
     chromecast_nu=`iptables -t nat -L PREROUTING -v -n --line-numbers | grep "dpt:53" | awk '{print $1}'`
@@ -127,26 +118,28 @@ flush_nat() {
 
 create_dnsmasq_conf() {
     [ ! -L "$DNSMASQ_POSTCONF" ] && ln -sf /koolshare/configs/ssx_dnsmasq.postconf $DNSMASQ_POSTCONF
-    host=`echo $ssx_ws_uri | awk -F/ '{print $3}'`
-    echo "server=/$host/$DNS" > $WS_DNSMASQ_CONFIG
-    echo "$ssx_custom_domains" | sed "s/^/server=&\/./g" | sed "s/$/\/127\.0\.0\.1#&$LOCAL_DNS_PORT/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CUSTOM_DNSMASQ_CONFIG
-    echo "$ssx_custom_domains" | sed "s/^/ipset=&\/./g" | sed "s/$/\/gfwlist/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CUSTOM_DNSMASQ_CONFIG
+    ws_host=`echo $ws_uri | awk -F/ '{print $3}'`
+    echo "server=/$ws_host/$DNS" > $WS_DNSMASQ_CONFIG
     cat /koolshare/configs/china-domains.txt | sed "s/^/server=&\/./g" | sed "s/$/\/&$DNS/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CHINA_DNSMASQ_CONFIG
-    cp -rf /koolshare/configs/gfwlist.conf $GFWLIST_DNSMASQ_CONFIG
+    [ ! -L "$GFWLIST_DNSMASQ_CONFIG" ] && ln -sf /koolshare/configs/gfwlist.conf $GFWLIST_DNSMASQ_CONFIG
+    if [ -n "$ssx_custom_domains" ]; then
+        echo "$ssx_custom_domains" | sed "s/^/server=&\/./g" | sed "s/$/\/127\.0\.0\.1#&$LOCAL_DNS_PORT/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CUSTOM_DNSMASQ_CONFIG
+        echo "$ssx_custom_domains" | sed "s/^/ipset=&\/./g" | sed "s/$/\/custom/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CUSTOM_DNSMASQ_CONFIG
+    fi
 }
 
 flush_dnsmasq_conf() {
     rm -f $DNSMASQ_POSTCONF
     rm -f $WS_DNSMASQ_CONFIG
-    rm -f $CUSTOM_DNSMASQ_CONFIG
     rm -f $CHINA_DNSMASQ_CONFIG
     rm -f $GFWLIST_DNSMASQ_CONFIG
+    rm -f $CUSTOM_DNSMASQ_CONFIG
 }
 
 start_ssx() {
     echo "starting shadow X..."
 
-    /koolshare/bin/ssx -ws $ssx_ws_uri -socks $SOCKS5_PORT -transporxy $TPROXY_PORT >/dev/null 2>&1 &
+    /koolshare/bin/ssx -ws $ws_uri -socks $SOCKS5_PORT -transporxy $TPROXY_PORT >/dev/null 2>&1 &
     /koolshare/bin/dns2socks 127.0.0.1:$SOCKS5_PORT 8.8.8.8:53 127.0.0.1:$DNS2SOCKS_PORT >/dev/null 2>&1 &
     /koolshare/bin/chinadns -s $DNS,127.0.0.1:$DNS2SOCKS_PORT -c /koolshare/configs/chnroute.txt -m -p $LOCAL_DNS_PORT >/dev/null 2>&1 &
 
@@ -174,7 +167,7 @@ stop_ssx() {
 
 case $ACTION in
 start)
-    if [ "$ssx_enable" == "1" -a "$ws_uri" != "" ]; then
+    if [ "$ssx_enable" = "1" -a -n "$ws_uri" ]; then
         start_ssx 
     fi
     ;;
@@ -183,7 +176,7 @@ stop)
     ;;
 *)
     stop_ssx
-    if [ "$ssx_enable" == "1" -a "$ws_uri" != "" ]; then
+    if [ "$ssx_enable" = "1" -a -n "$ws_uri" ]; then
         start_ssx
     fi
     ;;

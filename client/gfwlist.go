@@ -103,7 +103,12 @@ func getHostname(line string) string {
 	}
 
 	/* process */
-	u, err := url.Parse(ss)
+	s, err := url.PathUnescape(ss)
+	if err != nil {
+		log.Printf("%s: %s\n", line, err)
+		return ""
+	}
+	u, err := url.Parse(s)
 	if err != nil {
 		log.Printf("%s: %s\n", line, err)
 		return ""
