@@ -7,9 +7,9 @@ var hasOwnProperty = Object.hasOwnProperty;
 var proxy = '{{ .proxy }}; DIRECT;';
 var direct = 'DIRECT;';
 var hosts = {
-    // gfwlist{{range $host := .gfwList}}
+    // gfwlist{{range $host, $_ := .gfwlist}}
     '{{$host}}': 1,{{end}}
-    {{with .custom}}// custom{{range $host := .}}
+    {{with .custom}}// custom{{range $host, $_ := .}}
     '{{$host}}': 1,{{end}}{{end}}
 };
 
