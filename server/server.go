@@ -14,7 +14,7 @@ func Serve(redirect string, debug bool) {
 	httpClient := &http.Client{}
 	handle := func(ctx *rex.Context) {
 		if ctx.R.RequestURI == "/api/ws" {
-			serveWS(ctx.W, ctx.R, debug)
+			WebsocketToSocks5(ctx.W, ctx.R, debug)
 			return
 		}
 

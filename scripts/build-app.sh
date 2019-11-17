@@ -5,7 +5,7 @@ read -p "app platform (default is 'merlin_380')? " ap
 if [ "$ap" != "" ]; then 
     platform="$ap"
 fi
-read -p "udpate configs ('yes' or 'no', default is 'no')? " updateConfigs
+read -p "update configs ('yes' or 'no', default is 'no')? " updateConfigs
 
 if [ "$updateConfigs" = "yes" ]; then
 	echo "updating chnroute..."

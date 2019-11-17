@@ -47,8 +47,8 @@ load_module() {
 
 create_ipset() {
     ipset create chnroute nethash >/dev/null 2>&1
-    ipset create gfwlist iphash >/dev/null 2>&1
-    ipset create custom iphash >/dev/null 2>&1
+    ipset create gfwlist nethash >/dev/null 2>&1
+    ipset create custom nethash >/dev/null 2>&1
     ipset flush chnroute >/dev/null 2>&1
     ipset flush gfwlist >/dev/null 2>&1
     ipset flush custom >/dev/null 2>&1
@@ -75,11 +75,11 @@ apply_nat_rules() {
     iptables -t nat -A SSX -d 224.0.0.0/4 -j RETURN
     iptables -t nat -A SSX -d 240.0.0.0/4 -j RETURN
 
-    # force redirect custom ips
-    iptables -t nat -A SSX -p tcp -m set --match-set custom dst -j REDIRECT --to-ports $TPROXY_PORT
-
     # allow connection to chinese IPs
     iptables -t nat -A SSX -p tcp -m set --match-set chnroute dst -j RETURN
+
+    # force redirect custom ips
+    iptables -t nat -A SSX -p tcp -m set --match-set custom dst -j REDIRECT --to-ports $TPROXY_PORT
     
     # redirect gfwlist ips
     iptables -t nat -A SSX -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports $TPROXY_PORT
