@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -29,6 +30,10 @@ func (s *PACServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *PACServer) GFWList() (map[string]struct{}, error) {
 	if s.gfwlist == nil {
 		downloadedList, err := downloadAndParseGFWList(s.GFWListURI)
+		if err != nil {
+			log.Println("[warn] download GFWList:", err)
+			downloadedList, err = parseGFWList([]byte(defaultGFWList))
+		}
 		if err != nil {
 			return nil, err
 		}
