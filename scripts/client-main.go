@@ -28,7 +28,7 @@ func main() {
 		s := &client.PACServer{
 			GFWListURI: *gfwlistURI,
 		}
-		list, err := s.GFWList()
+		list, err := s.GFWList(true)
 		if err != nil {
 			fmt.Println("can not download the gfwlist")
 			os.Exit(1)
