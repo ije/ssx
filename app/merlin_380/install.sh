@@ -11,7 +11,6 @@ fi
 # cp files
 cp -rf /tmp/ssx/bin/ssx /koolshare/bin/ssx
 cp -rf /tmp/ssx/bin/chinadns /koolshare/bin/chinadns
-cp -rf /tmp/ssx/bin/dns2socks /koolshare/bin/dns2socks
 cp -rf /tmp/ssx/res/icon-ssx.png /koolshare/res/icon-ssx.png
 cp -rf /tmp/ssx/scripts/ssx.sh /koolshare/scripts/ssx.sh
 cp -rf /tmp/ssx/webs/Module_ssx.asp /koolshare/webs/Module_ssx.asp
@@ -27,7 +26,6 @@ chmod a+x /koolshare/scripts/ssx.sh
 chmod a+x /koolshare/configs/ssx_dnsmasq.postconf
 chmod 0755 /koolshare/bin/ssx
 chmod 0755 /koolshare/bin/chinadns
-chmod 0755 /koolshare/bin/dns2socks
 
 CUR_VERSION=`/koolshare/bin/ssx -version`
 dbus remove ssx_version
