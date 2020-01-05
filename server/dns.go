@@ -29,7 +29,7 @@ func WebsocketToDNS(w http.ResponseWriter, r *http.Request, debug bool) {
 	}
 	defer socket.Close()
 
-	buffer := make([]byte, 16*1024)
+	buffer := make([]byte, 8*1024)
 	for {
 		mt, data, err := ws.ReadMessage()
 		if err != nil {

@@ -24,8 +24,8 @@ func (c *Client) ServeUDP() (err error) {
 	defer socket.Close()
 
 	dialer := &websocket.Dialer{
-		ReadBufferSize:   16 * 1024,
-		WriteBufferSize:  16 * 1024,
+		ReadBufferSize:   8 * 1024,
+		WriteBufferSize:  8 * 1024,
 		HandshakeTimeout: 15 * time.Second,
 	}
 	ws, _, err := dialer.Dial(c.ServerURL, nil)
@@ -34,7 +34,7 @@ func (c *Client) ServeUDP() (err error) {
 	}
 	defer ws.Close()
 
-	buffer := make([]byte, 16*1024)
+	buffer := make([]byte, 8*1024)
 	for {
 		var n int
 		var addr net.Addr
