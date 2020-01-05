@@ -13,8 +13,13 @@ import (
 func Serve(redirect string, debug bool) {
 	httpClient := &http.Client{}
 	handle := func(ctx *rex.Context) {
-		if ctx.R.RequestURI == "/api/ssx" {
+		if ctx.R.RequestURI == "/api/ssx/socks" {
 			WebsocketToSocks5(ctx.W, ctx.R, debug)
+			return
+		}
+
+		if ctx.R.RequestURI == "/api/ssx/dns" {
+			WebsocketToDNS(ctx.W, ctx.R, debug)
 			return
 		}
 

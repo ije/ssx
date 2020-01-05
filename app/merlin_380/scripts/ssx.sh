@@ -4,15 +4,14 @@
 eval `dbus export ssx`
 source /koolshare/scripts/base.sh
 lan_ipaddr=$(nvram get lan_ipaddr)
-ws_uri=`echo $ssx_ws_uri | grep -E "wss?://[a-zA-Z0-9\-\.]+.*"`
 
 SOCKS5_PORT=1086
 TPROXY_PORT=1087
-DNS2SOCKS_PORT=1088
+PROXY_DNS_PORT=1053
 LOCAL_DNS_PORT=5300
 DNS=`echo $ssx_dns`
 DNSMASQ_POSTCONF=/jffs/scripts/dnsmasq.postconf
-WS_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/ws.conf
+SERVER_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/ws.conf
 CUSTOM_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/custom.conf
 CHINA_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/china.conf
 GFWLIST_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/gfwlist.conf
@@ -60,8 +59,7 @@ apply_nat_rules() {
     iptables -t nat -N SSX
 
     # ignore server ip
-    host=`echo $ws_uri | awk -F/ '{print $3}'`
-    ip=`ping -c 1 $host | grep PING | awk -F\( '{print $2}' | awk -F\) '{print $1}'`
+    ip=`ping -c 1 $ssx_server | grep PING | awk -F\( '{print $2}' | awk -F\) '{print $1}'`
     iptables -t nat -A SSX -d $ip -j RETURN
 
     # ignore internal ips
@@ -118,8 +116,7 @@ flush_nat() {
 
 create_dnsmasq_conf() {
     [ ! -L "$DNSMASQ_POSTCONF" ] && ln -sf /koolshare/configs/ssx_dnsmasq.postconf $DNSMASQ_POSTCONF
-    ws_host=`echo $ws_uri | awk -F/ '{print $3}'`
-    echo "server=/$ws_host/$DNS" > $WS_DNSMASQ_CONFIG
+    echo "server=/$ssx_server/$DNS" > $SERVER_DNSMASQ_CONFIG
     cat /koolshare/configs/china-domains.txt | sed "s/^/server=&\/./g" | sed "s/$/\/&$DNS/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CHINA_DNSMASQ_CONFIG
     [ ! -L "$GFWLIST_DNSMASQ_CONFIG" ] && ln -sf /koolshare/configs/gfwlist.conf $GFWLIST_DNSMASQ_CONFIG
     if [ -n "$ssx_custom_domains" ]; then
@@ -130,7 +127,7 @@ create_dnsmasq_conf() {
 
 flush_dnsmasq_conf() {
     rm -f $DNSMASQ_POSTCONF
-    rm -f $WS_DNSMASQ_CONFIG
+    rm -f $SERVER_DNSMASQ_CONFIG
     rm -f $CHINA_DNSMASQ_CONFIG
     rm -f $GFWLIST_DNSMASQ_CONFIG
     rm -f $CUSTOM_DNSMASQ_CONFIG
@@ -139,9 +136,12 @@ flush_dnsmasq_conf() {
 start_ssx() {
     echo "starting shadow X..."
 
-    /koolshare/bin/ssx -ws $ws_uri -socks $SOCKS5_PORT -transporxy $TPROXY_PORT >/dev/null 2>&1 &
-    /koolshare/bin/dns2socks 127.0.0.1:$SOCKS5_PORT 8.8.8.8:53 127.0.0.1:$DNS2SOCKS_PORT >/dev/null 2>&1 &
-    /koolshare/bin/chinadns -s $DNS,127.0.0.1:$DNS2SOCKS_PORT -c /koolshare/configs/chnroute.txt -m -p $LOCAL_DNS_PORT >/dev/null 2>&1 &
+    if [ "$ssx_ssl" = "1" ]; then
+        /koolshare/bin/ssx -server $ssx_server -ssl -socks $SOCKS5_PORT -transporxy $TPROXY_PORT -dns $PROXY_DNS_PORT >/dev/null 2>&1 &
+    else
+        /koolshare/bin/ssx -server $ssx_server -socks $SOCKS5_PORT -transporxy $TPROXY_PORT -dns $PROXY_DNS_PORT >/dev/null 2>&1 &
+    fi
+    /koolshare/bin/chinadns -s $DNS,127.0.0.1:$PROXY_DNS_PORT -c /koolshare/configs/chnroute.txt -m -p $LOCAL_DNS_PORT >/dev/null 2>&1 &
 
     load_module
     create_ipset
@@ -158,7 +158,7 @@ start_ssx() {
 stop_ssx() {
     echo "stopping shadow X..."
 
-    killall ssx chinadns dns2socks >/dev/null 2>&1
+    killall ssx chinadns >/dev/null 2>&1
 
     flush_dnsmasq_conf
     service restart_dnsmasq
@@ -167,7 +167,7 @@ stop_ssx() {
 
 case $ACTION in
 start)
-    if [ "$ssx_enable" = "1" -a -n "$ws_uri" ]; then
+    if [ "$ssx_enable" = "1" -a -n "$ssx_server" ]; then
         start_ssx 
     fi
     ;;
@@ -176,7 +176,7 @@ stop)
     ;;
 *)
     stop_ssx
-    if [ "$ssx_enable" = "1" -a -n "$ws_uri" ]; then
+    if [ "$ssx_enable" = "1" -a -n "$ssx_server" ]; then
         start_ssx
     fi
     ;;

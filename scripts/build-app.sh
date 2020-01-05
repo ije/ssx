@@ -31,8 +31,6 @@ if [ "$?" != "0" ]; then
     exit
 fi
 
-
-
 cd ../app
 mv $platform ssx
 tar -czf ~/Downloads/ssx-${CUR_VERSION}.tar.gz ssx

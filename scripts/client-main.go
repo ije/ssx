@@ -7,12 +7,14 @@ import (
 	"ssx/client"
 )
 
-const version = "1.0.1"
+const version = "1.1.0"
 
 func main() {
-	wsURI := flag.String("ws", "ws://127.0.0.1/api/ssx", "server ws uri")
+	server := flag.String("server", "127.0.0.1", "server address")
+	ssl := flag.Bool("ssl", false, "use ssl connection")
 	socksPort := flag.Int("socks", 1086, "local socks proxy port")
 	transporxyPort := flag.Int("transporxy", 0, "local tpc transparent proxy port")
+	dnsPort := flag.Int("dns", 0, "dns proxy port")
 	pacPort := flag.Int("pac", 0, "local pac server port")
 	gfwlistURI := flag.String("gfwlist-uri", "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt", "gfwlist URI")
 	printGFWList := flag.Bool("gfwlist", false, "print gfwlist")
@@ -39,5 +41,11 @@ func main() {
 		return
 	}
 
-	client.Run(*wsURI, uint16(*socksPort), uint16(*transporxyPort), uint16(*pacPort), *gfwlistURI)
+	serverAddress := "ws"
+	if *ssl {
+		serverAddress += "s"
+	}
+	serverAddress += "://" + *server
+
+	client.Run(serverAddress, uint16(*socksPort), uint16(*transporxyPort), uint16(*dnsPort), uint16(*pacPort), *gfwlistURI)
 }

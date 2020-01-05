@@ -9,7 +9,7 @@
 	<meta HTTP-EQUIV="Expires" CONTENT="-1" />
 	<link rel="shortcut icon" href="images/favicon.png" />
 	<link rel="icon" href="images/favicon.png" />
-	<title>Showdowsocks X</title>
+	<title>SSX</title>
 	<link rel="stylesheet" type="text/css" href="index_style.css" />
 	<link rel="stylesheet" type="text/css" href="form_style.css" />
 	<link rel="stylesheet" type="text/css" href="usp_style.css" />
@@ -29,18 +29,19 @@
 		var $j = jQuery.noConflict()
 		function init() {
 			show_menu(menu_hook)
-			buildSwitch()
+			buildSwitch('enable-checkbox', 'ssx_enable')
+			buildSwitch('ssl-checkbox', 'ssx_ssl')
 		}
 
-		function buildSwitch() {
-			var $el = $j("#switch")
-			if (document.form.ssx_enable.value != "1") {
+		function buildSwitch(id,key) {
+			var $el = $j("#"+id)
+			if (document.form[key].value != "1") {
 				$el[0].checked = false
 			} else {
 				$el[0].checked = true
 			}
-			$j("#switch").click(function () {
-				document.form.ssx_enable.value = $el[0].checked ? '1' : '0'
+			$j("#"+id).click(function () {
+				document.form[key].value = $el[0].checked ? '1' : '0'
 			})
 		}
 
@@ -59,7 +60,7 @@
 		}
 
 		function menu_hook(title, tab) {
-			tabtitle[tabtitle.length - 1] = new Array("", "Shadowsocks X")
+			tabtitle[tabtitle.length - 1] = new Array("", "SSX")
 			tablink[tablink.length - 1] = new Array("", "Module_ssx.asp")
 		}
 	</script>
@@ -82,6 +83,7 @@
 		<input type="hidden" name="SystemCmd" onkeydown="onSubmitCtrl(this, ' Refresh ')" value="ssx.sh" />
 		<input type="hidden" name="firmver" value="<% nvram_get(" firmver "); %>" />
 		<input type="hidden" id="ssx_enable" name="ssx_enable" value='<% dbus_get_def("ssx_enable", "0"); %>' />
+		<input type="hidden" id="ssx_ssl" name="ssx_ssl" value='<% dbus_get_def("ssx_ssl", "0"); %>' />
 		<table class="content" align="center" cellpadding="0" cellspacing="0">
 			<tr>
 				<td width="17">&nbsp;</td>
@@ -120,8 +122,8 @@
 													<td colspan="2">
 														<div class="switch_field"
 															style="display:table-cell;float: left;">
-															<label for="switch">
-																<input id="switch" class="switch" type="checkbox" style="display: none;">
+															<label for="enable-checkbox">
+																<input id="enable-checkbox" class="switch" type="checkbox" style="display: none;">
 																<div class="switch_container">
 																	<div class="switch_bar"></div>
 																	<div class="switch_circle transition_style">
@@ -131,15 +133,17 @@
 															</label>
 														</div>
 														<div id="ssx_version_show" style="padding-top:5px;margin-left:230px;margin-top:0px;">
-															<i>Current
-																version：<% dbus_get_def("ssx_version", "0.0.1"); %></i>
+															<i>Current version：<% dbus_get_def("ssx_version", "0.0.1"); %></i>
 														</div>
 													</td>
 												</tr>
 												<tr>
-													<th>WS URI</th>
+													<th>Server</th>
 													<td colspan="2">
-														<input type="text" maxlength="64" id="ssx_ws_uri" name="ssx_ws_uri" value='<% dbus_get_def("ssx_ws_uri", ""); %>' style="width:342px;float:left;" autocorrect="off" autocapitalize="off"/>
+														<input type="text" maxlength="64" id="ssx_server" name="ssx_server" value='<% dbus_get_def("ssx_server", ""); %>' style="width:342px;float:left;" autocorrect="off" autocapitalize="off"/>
+														&nbsp;
+														<input id="ssl-checkbox" type="checkbox">
+														<label for>SSL</label>
 													</td>
 												</tr>
 												<tr>
@@ -156,8 +160,7 @@
 												</tr>
 											</table>
 											<div class="apply_gen">
-												<button id="cmdBtn" class="button_gen"
-													onclick="onSubmitCtrl(this, ' Refresh ')">Update</button>
+												<button id="cmdBtn" class="button_gen" onclick="onSubmitCtrl(this, ' Refresh ')">Update</button>
 											</div>
 										</td>
 									</tr>
