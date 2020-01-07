@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"golang.org/x/net/dns/dnsmessage"
@@ -15,7 +16,13 @@ import (
 type DNSServer struct {
 	DohServer  string
 	Port       uint16
+	cache      sync.Map
 	httpClient *http.Client
+}
+
+type DNSCache struct {
+	Data    []byte
+	Expires time.Time
 }
 
 func (s *DNSServer) Serve() (err error) {
@@ -37,6 +44,7 @@ func (s *DNSServer) Serve() (err error) {
 }
 
 func (s *DNSServer) proxyDNS(conn *net.UDPConn, addr *net.UDPAddr, raw []byte) {
+	var writed bool
 	var msg dnsmessage.Message
 	err := msg.Unpack(raw)
 	if err != nil {
@@ -49,14 +57,31 @@ func (s *DNSServer) proxyDNS(conn *net.UDPConn, addr *net.UDPAddr, raw []byte) {
 		return
 	}
 
-	url := fmt.Sprintf("%s?dns=%s", s.DohServer, base64.RawURLEncoding.EncodeToString(packed))
+	query := base64.RawURLEncoding.EncodeToString(packed)
+	v, ok := s.cache.Load(query)
+	if ok {
+		if c, ok := v.(*DNSCache); ok {
+			_, err = conn.WriteToUDP(c.Data, addr)
+			if err != nil {
+				log.Printf("[error] DNSServer could not write to udp connection: %s", err)
+			}
+			if c.Expires.After(time.Now()) {
+				log.Printf("[debug] DNSServer get data from cache: %s", query)
+				return
+			}
+			writed = true
+		}
+		s.cache.Delete(query)
+	}
+
+	url := fmt.Sprintf("%s?dns=%s", s.DohServer, query)
 	r, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		log.Printf("[error] DNSServer could not create request: %s", err)
 		return
 	}
 	r.Header.Set("Accept", "application/dns-message")
-	// r.Header.Set("Content-Type", "application/dns-message")
+	r.Header.Set("Content-Type", "application/dns-message")
 
 	if s.httpClient == nil {
 		s.httpClient = &http.Client{
@@ -92,8 +117,15 @@ func (s *DNSServer) proxyDNS(conn *net.UDPConn, addr *net.UDPAddr, raw []byte) {
 		return
 	}
 
-	_, err = conn.WriteToUDP(body, addr)
-	if err != nil {
-		log.Printf("[error] DNSServer could not write to udp connection: %s", err)
+	s.cache.Store(query, &DNSCache{
+		Data:    body,
+		Expires: time.Now().Add(time.Hour),
+	})
+
+	if !writed {
+		_, err = conn.WriteToUDP(body, addr)
+		if err != nil {
+			log.Printf("[error] DNSServer could not write to udp connection: %s", err)
+		}
 	}
 }
