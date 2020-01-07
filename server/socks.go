@@ -10,12 +10,12 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  16 * 1024,
-	WriteBufferSize: 16 * 1024,
+	ReadBufferSize:  4 * 1024,
+	WriteBufferSize: 4 * 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-func WebsocketToSocks5(w http.ResponseWriter, r *http.Request, debug bool) {
+func ServeSocks(w http.ResponseWriter, r *http.Request, debug bool) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		if _, ok := err.(websocket.HandshakeError); !ok {

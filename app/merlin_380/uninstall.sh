@@ -9,3 +9,4 @@ rm -f /koolshare/configs/chnroute.txt
 rm -f /koolshare/configs/china-domains.txt
 rm -f /koolshare/configs/gfwlist.conf
 rm -f /koolshare/configs/ssx_dnsmasq.postconf
+rm -f /koolshare/init.d/S97ssx.sh

@@ -31,7 +31,7 @@ CUR_VERSION=`/koolshare/bin/ssx -version`
 dbus remove ssx_version
 dbus set ssx_version="$CUR_VERSION"
 dbus set softcenter_module_ssx_version="$CUR_VERSION"
-dbus set softcenter_module_ssx_title="Shadowsockets X"
+dbus set softcenter_module_ssx_title="SSX"
 dbus set softcenter_module_ssx_description="科学上网"
 
 # re-enable ssx

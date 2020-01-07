@@ -13,13 +13,13 @@ import (
 func Serve(redirect string, debug bool) {
 	httpClient := &http.Client{}
 	handle := func(ctx *rex.Context) {
-		if ctx.R.RequestURI == "/api/ssx/socks" {
-			WebsocketToSocks5(ctx.W, ctx.R, debug)
+		if ctx.R.RequestURI == "/ssx/socks" {
+			ServeSocks(ctx.W, ctx.R, debug)
 			return
 		}
 
-		if ctx.R.RequestURI == "/api/ssx/dns" {
-			WebsocketToDNS(ctx.W, ctx.R, debug)
+		if strings.HasPrefix(ctx.R.RequestURI, "/ssx/dns-query") {
+			ServeDohProxy(ctx.W, ctx.R, debug)
 			return
 		}
 

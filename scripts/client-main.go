@@ -16,6 +16,7 @@ func main() {
 	transporxyPort := flag.Int("transporxy", 0, "local tpc transparent proxy port")
 	dnsPort := flag.Int("dns", 0, "dns proxy port")
 	pacPort := flag.Int("pac", 0, "local pac server port")
+	dohServer := flag.String("doh-server", "https://mozilla.cloudflare-dns.com/dns-query", "doh server")
 	gfwlistURI := flag.String("gfwlist-uri", "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt", "gfwlist URI")
 	printGFWList := flag.Bool("gfwlist", false, "print gfwlist")
 	printVersion := flag.Bool("version", false, "print version")
@@ -41,11 +42,5 @@ func main() {
 		return
 	}
 
-	serverAddress := "ws"
-	if *ssl {
-		serverAddress += "s"
-	}
-	serverAddress += "://" + *server
-
-	client.Run(serverAddress, uint16(*socksPort), uint16(*transporxyPort), uint16(*dnsPort), uint16(*pacPort), *gfwlistURI)
+	client.Run(*server, *ssl, uint16(*socksPort), uint16(*transporxyPort), uint16(*dnsPort), *dohServer, uint16(*pacPort), *gfwlistURI)
 }

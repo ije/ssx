@@ -101,7 +101,7 @@
 									<tr>
 										<td bgcolor="#4D595D" colspan="3" valign="top">
 											<div>&nbsp;</div>
-											<div style="float:left;" class="formfonttitle">Shadowsockets X</div>
+											<div style="float:left;" class="formfonttitle">SSX</div>
 											<div style="float:right; width:15px; height:25px;margin-top:10px">
 												<img id="return_btn" onclick="reload_Soft_Center();" align="right"
 													style="cursor:pointer;position:absolute;margin-left:-30px;margin-top:-25px;"
@@ -150,6 +150,12 @@
 													<th>DNS</th>
 													<td colspan="2">
 														<input type="text" maxlength="64" id="ssx_dns" name="ssx_dns" value='<% dbus_get_def("ssx_dns", ""); %>' style="width:342px;float:left;" autocorrect="off" autocapitalize="off"/>
+													</td>
+												</tr>
+												<tr>
+													<th>Doh Server</th>
+													<td colspan="2">
+														<input type="text" maxlength="64" id="ssx_doh_server" name="ssx_doh_server" value='<% dbus_get_def("ssx_doh_server", ""); %>' style="width:342px;float:left;" autocorrect="off" autocapitalize="off" placeholder="https://mozilla.cloudflare-dns.com/dns-query" />
 													</td>
 												</tr>
 												<tr>

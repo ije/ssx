@@ -4,6 +4,8 @@
 eval `dbus export ssx`
 source /koolshare/scripts/base.sh
 lan_ipaddr=$(nvram get lan_ipaddr)
+server=`echo $ssx_server | grep -E "[a-zA-Z0-9\-\.]+"`
+doh_server=`echo $ssx_doh_server | grep -E "https?://[a-zA-Z0-9\-\.]+.*"`
 
 SOCKS5_PORT=1086
 TPROXY_PORT=1087
@@ -11,7 +13,7 @@ PROXY_DNS_PORT=1053
 LOCAL_DNS_PORT=5300
 DNS=`echo $ssx_dns`
 DNSMASQ_POSTCONF=/jffs/scripts/dnsmasq.postconf
-SERVER_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/ws.conf
+SERVER_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/server.conf
 CUSTOM_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/custom.conf
 CHINA_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/china.conf
 GFWLIST_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/gfwlist.conf
@@ -59,8 +61,18 @@ apply_nat_rules() {
     iptables -t nat -N SSX
 
     # ignore server ip
-    ip=`ping -c 1 $ssx_server | grep PING | awk -F\( '{print $2}' | awk -F\) '{print $1}'`
+    ip=`ping -c 1 $server | grep PING | awk -F\( '{print $2}' | awk -F\) '{print $1}'`
     iptables -t nat -A SSX -d $ip -j RETURN
+
+    # ignore doh server ip
+    doh_server_host="mozilla.cloudflare-dns.com"
+    if [ -n "$doh_server" ]; then
+        doh_server_host=`echo $doh_server | awk -F/ '{print $3}'`
+    fi
+    doh_server_ip=`ping -c 1 $doh_server_host | grep PING | awk -F\( '{print $2}' | awk -F\) '{print $1}'`
+    if [ "$doh_server_ip" != "$ip" ]; then
+        iptables -t nat -A SSX -d $doh_server_ip -j RETURN
+    fi
 
     # ignore internal ips
     iptables -t nat -A SSX -d 0.0.0.0/8 -j RETURN
@@ -116,7 +128,15 @@ flush_nat() {
 
 create_dnsmasq_conf() {
     [ ! -L "$DNSMASQ_POSTCONF" ] && ln -sf /koolshare/configs/ssx_dnsmasq.postconf $DNSMASQ_POSTCONF
-    echo "server=/$ssx_server/$DNS" > $SERVER_DNSMASQ_CONFIG
+    echo "server=/$server/$DNS" >> $SERVER_DNSMASQ_CONFIG
+    if [ -n "$doh_server" ]; then
+        doh_server_host=`echo $doh_server | awk -F/ '{print $3}'`
+        if [ "$doh_server_host" != "$server" ]; then
+            echo "server=/$doh_server_host/$DNS" >> $SERVER_DNSMASQ_CONFIG
+        fi
+    else
+        echo "server=/mozilla.cloudflare-dns.com/$DNS" >> $SERVER_DNSMASQ_CONFIG
+    fi
     cat /koolshare/configs/china-domains.txt | sed "s/^/server=&\/./g" | sed "s/$/\/&$DNS/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CHINA_DNSMASQ_CONFIG
     [ ! -L "$GFWLIST_DNSMASQ_CONFIG" ] && ln -sf /koolshare/configs/gfwlist.conf $GFWLIST_DNSMASQ_CONFIG
     if [ -n "$ssx_custom_domains" ]; then
@@ -134,13 +154,17 @@ flush_dnsmasq_conf() {
 }
 
 start_ssx() {
-    echo "starting shadow X..."
+    echo "starting SSX..."
 
+    ssl=""
     if [ "$ssx_ssl" = "1" ]; then
-        /koolshare/bin/ssx -server $ssx_server -ssl -socks $SOCKS5_PORT -transporxy $TPROXY_PORT -dns $PROXY_DNS_PORT >/dev/null 2>&1 &
-    else
-        /koolshare/bin/ssx -server $ssx_server -socks $SOCKS5_PORT -transporxy $TPROXY_PORT -dns $PROXY_DNS_PORT >/dev/null 2>&1 &
+        ssl="-ssl"
     fi
+    dohServer=""
+    if [ -n "$doh_server" ]; then
+        dohServer="-doh-server $doh_server"
+    fi
+    /koolshare/bin/ssx -server $server $ssl -socks $SOCKS5_PORT -transporxy $TPROXY_PORT -dns $PROXY_DNS_PORT $dohServer >/dev/null 2>&1 &
     /koolshare/bin/chinadns -s $DNS,127.0.0.1:$PROXY_DNS_PORT -c /koolshare/configs/chnroute.txt -m -p $LOCAL_DNS_PORT >/dev/null 2>&1 &
 
     load_module
@@ -150,13 +174,13 @@ start_ssx() {
     apply_nat_rules
 
     # try to create start_up file
-    if [ ! -L "/koolshare/init.d/S97Shadowx.sh" ]; then 
-        ln -sf /koolshare/scripts/ssx.sh /koolshare/init.d/S97Shadowx.sh
+    if [ ! -L "/koolshare/init.d/S97ssx.sh" ]; then 
+        ln -sf /koolshare/scripts/ssx.sh /koolshare/init.d/S97ssx.sh
     fi
 }
 
 stop_ssx() {
-    echo "stopping shadow X..."
+    echo "stopping SSX..."
 
     killall ssx chinadns >/dev/null 2>&1
 
@@ -167,7 +191,7 @@ stop_ssx() {
 
 case $ACTION in
 start)
-    if [ "$ssx_enable" = "1" -a -n "$ssx_server" ]; then
+    if [ "$ssx_enable" = "1" -a -n "$server" ]; then
         start_ssx 
     fi
     ;;
@@ -176,7 +200,7 @@ stop)
     ;;
 *)
     stop_ssx
-    if [ "$ssx_enable" = "1" -a -n "$ssx_server" ]; then
+    if [ "$ssx_enable" = "1" -a -n "$server" ]; then
         start_ssx
     fi
     ;;

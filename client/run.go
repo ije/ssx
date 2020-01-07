@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func Run(server string, socksPort uint16, transproxyPort uint16, dnsPort uint16, pacPort uint16, gfwlistURI string) {
+func Run(server string, ssl bool, socksPort uint16, transproxyPort uint16, dnsPort uint16, dohServer string, pacPort uint16, gfwlistURI string) {
 	if transproxyPort > 0 {
 		go func() {
 			transproxy := &Transproxy{
@@ -42,28 +42,29 @@ func Run(server string, socksPort uint16, transproxyPort uint16, dnsPort uint16,
 
 	if dnsPort > 0 {
 		go func() {
-			c := &Client{
-				ServerURL: strings.TrimRight(server, "/") + "/api/ssx/dns",
+			s := &DNSServer{
+				DohServer: dohServer,
 				Port:      dnsPort,
 			}
 			for {
-				err := c.ServeUDP()
+				err := s.Serve()
 				if err != nil {
 					log.Println("client(dns-proxy) shutdown:", err)
 				}
 				time.Sleep(time.Second / 10)
 			}
 		}()
-		log.Println("dns proxy enable")
+		log.Println("dns proxy enable, doh server:", dohServer)
 	}
 
-	clt := &Client{
-		ServerURL: strings.TrimRight(server, "/") + "/api/ssx/socks",
+	c := &SocksClient{
+		ServerURL: strings.TrimRight(server, "/") + "/ssx/socks",
+		SSL:       ssl,
 		Port:      socksPort,
 	}
-	log.Println("start socks5 proxy:", clt.ServerURL)
+	log.Println("start socks5 proxy, server:", server, "ssl:", ssl)
 	for {
-		err := clt.Serve()
+		err := c.Serve()
 		if err != nil {
 			log.Println("client(socks-proxy) shutdown:", err)
 		}

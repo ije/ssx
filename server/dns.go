@@ -2,63 +2,59 @@ package server
 
 import (
 	"fmt"
-	"log"
-	"net"
+	"io/ioutil"
 	"net/http"
-
-	"github.com/gorilla/websocket"
 )
 
-func WebsocketToDNS(w http.ResponseWriter, r *http.Request, debug bool) {
-	ws, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		if _, ok := err.(websocket.HandshakeError); !ok {
-			log.Println("websocket:", err)
-		}
+const dohServer = "https://mozilla.cloudflare-dns.com/dns-query"
+
+func ServeDohProxy(w http.ResponseWriter, r *http.Request, debug bool) {
+	dns := r.URL.Query().Get("dns")
+	if dns == "" {
+		http.Error(w, http.StatusText(400), 400)
 		return
 	}
-	defer ws.Close()
 
-	socket, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-		IP:   net.IPv4(8, 8, 8, 8),
-		Port: 53,
-	})
+	msg, header, err := queryDNS(dns)
 	if err != nil {
-		log.Println("net:", err)
+		http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
 		return
 	}
-	defer socket.Close()
 
-	buffer := make([]byte, 8*1024)
-	for {
-		mt, data, err := ws.ReadMessage()
-		if err != nil {
-			log.Println("websocket.ReadMessage:", err)
-			return
-		}
+	for key, values := range header {
+		w.Header()[key] = values
+	}
+	w.Header().Set("server", "ssx-server")
+	w.WriteHeader(200)
+	w.Write(msg)
+}
 
-		if mt != websocket.BinaryMessage {
-			continue
-		}
+func queryDNS(dns string) (msg []byte, header http.Header, err error) {
+	url := fmt.Sprintf("%s?dns=%s", dohServer, dns)
+	r, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return
+	}
+	r.Header.Set("Accept", "application/dns-message")
+	r.Header.Set("Content-Type", "application/dns-message")
 
-		_, err = socket.Write(data)
-		if err != nil {
-			fmt.Println("udp.write:", err)
-			return
-		}
+	c := http.Client{}
+	resp, err := c.Do(r)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
 
-		var n int
-		n, _, err = socket.ReadFromUDP(buffer)
-		if err != nil {
-			fmt.Println("udp.read:", err)
-			return
-		}
-
-		err = ws.WriteMessage(websocket.BinaryMessage, buffer[:n])
-		if err != nil {
-			log.Println("websocket.WriteMessage:", err)
-			return
-		}
+	if resp.StatusCode != http.StatusOK {
+		err = fmt.Errorf(resp.Status)
+		return
 	}
 
+	msg, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+
+	header = resp.Header
+	return
 }

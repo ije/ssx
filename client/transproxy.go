@@ -37,32 +37,32 @@ func (t *Transproxy) Serve() (err error) {
 func (t *Transproxy) handleConn(conn net.Conn) {
 	dstHost, dstPort, conn, err := getOriginalDst(conn.(*net.TCPConn))
 	if err != nil {
-		log.Println("[ERR] shadowX: failed to get original destination host and port:", err)
+		log.Println("[ERR] transproxy: failed to get original destination host and port:", err)
 		return
 	}
 	defer conn.Close()
 
 	err = conn.(*net.TCPConn).SetKeepAlive(true)
 	if err != nil {
-		log.Println("[ERR] shadowX: failed to set KeepAlive on TCP connection:", err)
+		log.Println("[ERR] transproxy: failed to set KeepAlive on TCP connection:", err)
 		return
 	}
 
 	err = conn.(*net.TCPConn).SetKeepAlivePeriod(time.Hour)
 	if err != nil {
-		log.Println("[ERR] shadowX: failed to set KeepAlivePeriod on TCP connection:", err)
+		log.Println("[ERR] transproxy: failed to set KeepAlivePeriod on TCP connection:", err)
 		return
 	}
 
 	dialSocksProxy, err := proxy.SOCKS5("tcp", fmt.Sprintf("127.0.0.1:%d", t.SocksPort), nil, proxy.Direct)
 	if err != nil {
-		log.Println("[ERR] shadowX: failed to create socks5 proxy:", err)
+		log.Println("[ERR] transproxy: failed to create socks5 proxy:", err)
 		return
 	}
 
 	rConn, err := dialSocksProxy.Dial("tcp", fmt.Sprintf("%s:%d", dstHost, dstPort))
 	if err != nil {
-		log.Println("[ERR] shadowX: failed to dail proxy connection:", err)
+		log.Println("[ERR] transproxy: failed to dail proxy connection:", err)
 		return
 	}
 	defer rConn.Close()
@@ -92,7 +92,7 @@ const (
 
 func getOriginalDst(clientConn *net.TCPConn) (host string, port uint16, newTCPConn *net.TCPConn, err error) {
 	if clientConn == nil {
-		err = errors.New("ERR: clientConn is nil")
+		err = errors.New("clientConn is nil")
 		return
 	}
 	defer clientConn.Close()
@@ -100,7 +100,7 @@ func getOriginalDst(clientConn *net.TCPConn) (host string, port uint16, newTCPCo
 	// test if the underlying fd is nil
 	remoteAddr := clientConn.RemoteAddr()
 	if remoteAddr == nil {
-		err = errors.New("ERR: clientConn.fd is nil")
+		err = errors.New("clientConn.fd is nil")
 		return
 	}
 
@@ -135,7 +135,7 @@ func getOriginalDst(clientConn *net.TCPConn) (host string, port uint16, newTCPCo
 	newTCPConn, ok := newConn.(*net.TCPConn)
 	if !ok {
 		newConn.Close()
-		err = fmt.Errorf("ERR: newConn is not a *net.TCPConn, instead it is: %T (%v)", newConn, newConn)
+		err = fmt.Errorf("newConn is not a *net.TCPConn, instead it is: %T (%v)", newConn, newConn)
 		return
 	}
 
