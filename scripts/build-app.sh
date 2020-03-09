@@ -9,7 +9,8 @@ read -p "update configs ('yes' or 'no', default is 'no')? " updateConfigs
 
 if [ "$updateConfigs" = "yes" ]; then
 	echo "updating chnroute..."
-	wget -O- 'http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest' | grep ipv4 | grep CN | awk -F\| '{ printf("%s/%d\n", $4, 32-log($5)/log(2)) }' > ../app/$platform/configs/chnroute.txt
+	wget -O delegated-apnic-latest.txt 'http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest'
+	cat delegated-apnic-latest.txt | grep ipv4 | grep CN | awk -F\| '{ printf("%s/%d\n", $4, 32-log($5)/log(2)) }' > ../app/$platform/configs/chnroute.txt
 
 	# echo "updating gfwlist..."
 	# gfwlist=`go run client-main.go -gfwlist`
