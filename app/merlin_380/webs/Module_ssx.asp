@@ -159,9 +159,9 @@
 													</td>
 												</tr>
 												<tr>
-													<th>Custom Domains</th>
+													<th>Blacklist Domains</th>
 													<td colspan="2">
-														<textarea id="ssx_custom_domains" name="ssx_custom_domains" style="width:342px;float:left;" rows="6" autocorrect="off" autocapitalize="off"><% dbus_get_def("ssx_custom_domains", ""); %></textarea>
+														<textarea id="ssx_blacklist_domains" name="ssx_blacklist_domains" style="width:342px;float:left;" rows="6" autocorrect="off" autocapitalize="off"><% dbus_get_def("ssx_blacklist_domains", ""); %></textarea>
 													</td>
 												</tr>
 											</table>

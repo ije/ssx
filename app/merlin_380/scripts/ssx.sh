@@ -13,10 +13,10 @@ PROXY_DNS_PORT=1053
 LOCAL_DNS_PORT=5300
 DNS=`echo $ssx_dns`
 DNSMASQ_POSTCONF=/jffs/scripts/dnsmasq.postconf
-SERVER_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/server.conf
-CUSTOM_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/custom.conf
-CHINA_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/china.conf
+SSX_SERVER_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/ssx-server.conf
+CHINA_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/accelerated-domains.china.conf
 GFWLIST_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/gfwlist.conf
+BLACKLIST_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/blacklist.conf
 
 # check platform
 case $(uname -m) in
@@ -30,29 +30,29 @@ case $(uname -m) in
 esac
 
 get_lan_cidr() {
-	netmask=`nvram get lan_netmask`
-	local x=${netmask##*255.}
-	set -- 0^^^128^192^224^240^248^252^254^ $(( (${#netmask} - ${#x})*2 )) ${x%%.*}
-	x=${1%%$3*}
-	suffix=$(( $2 + (${#x}/4) ))
-	echo $lan_ipaddr/$suffix
+    netmask=`nvram get lan_netmask`
+    local x=${netmask##*255.}
+    set -- 0^^^128^192^224^240^248^252^254^ $(( (${#netmask} - ${#x})*2 )) ${x%%.*}
+    x=${1%%$3*}
+    suffix=$(( $2 + (${#x}/4) ))
+    echo $lan_ipaddr/$suffix
 }
 
 load_module() {
-	xt=`lsmod | grep xt_set`
-	OS=$(uname -r)
-	if [ -f /lib/modules/${OS}/kernel/net/netfilter/xt_set.ko ] && [ -z "$xt" ];then
-		insmod /lib/modules/${OS}/kernel/net/netfilter/xt_set.ko
-	fi
+    xt=`lsmod | grep xt_set`
+    OS=$(uname -r)
+    if [ -f /lib/modules/${OS}/kernel/net/netfilter/xt_set.ko ] && [ -z "$xt" ];then
+        insmod /lib/modules/${OS}/kernel/net/netfilter/xt_set.ko
+    fi
 }
 
 create_ipset() {
     ipset create chnroute nethash >/dev/null 2>&1
     ipset create gfwlist nethash >/dev/null 2>&1
-    ipset create custom nethash >/dev/null 2>&1
+    ipset create blacklist nethash >/dev/null 2>&1
     ipset flush chnroute >/dev/null 2>&1
     ipset flush gfwlist >/dev/null 2>&1
-    ipset flush custom >/dev/null 2>&1
+    ipset flush blacklist >/dev/null 2>&1
 
     sed -e "s/^/add chnroute &/g" /koolshare/configs/chnroute.txt | awk '{print $0} END{print "COMMIT"}' | ipset -R
 }
@@ -87,10 +87,10 @@ apply_nat_rules() {
 
     # allow connection to chinese IPs
     iptables -t nat -A SSX -p tcp -m set --match-set chnroute dst -j RETURN
-
-    # force redirect custom ips
-    iptables -t nat -A SSX -p tcp -m set --match-set custom dst -j REDIRECT --to-ports $TPROXY_PORT
     
+    # force redirect blacklist ips
+    iptables -t nat -A SSX -p tcp -m set --match-set blacklist dst -j REDIRECT --to-ports $TPROXY_PORT
+
     # redirect gfwlist ips
     iptables -t nat -A SSX -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports $TPROXY_PORT
 
@@ -99,58 +99,65 @@ apply_nat_rules() {
 
     # enable chromecast
     chromecast_nu=`iptables -t nat -L PREROUTING -v -n --line-numbers | grep "dpt:53" | awk '{print $1}'`
-	if [ -z "$chromecast_nu" ]; then
+    if [ -z "$chromecast_nu" ]; then
         iptables -t nat -A PREROUTING -p udp -s $(get_lan_cidr) --dport 53 -j DNAT --to $lan_ipaddr >/dev/null 2>&1
     fi
 }
 
 flush_nat() {
     # flush rules and set if any
-	nat_indexs=`iptables -nvL PREROUTING -t nat | sed 1,2d | sed -n '/SSX/=' | sort -r`
-	for nat_index in $nat_indexs
-	do
+    nat_indexs=`iptables -nvL PREROUTING -t nat | sed 1,2d | sed -n '/SSX/=' | sort -r`
+    for nat_index in $nat_indexs
+    do
         iptables -t nat -D PREROUTING $nat_index >/dev/null 2>&1
-	done
+    done
 
     iptables -t nat -F SSX >/dev/null 2>&1
     iptables -t nat -X SSX >/dev/null 2>&1
 
     ipset destroy chnroute >/dev/null 2>&1
     ipset destroy gfwlist >/dev/null 2>&1
-    ipset destroy custom >/dev/null 2>&1
-    
+    ipset destroy blacklist >/dev/null 2>&1
+
     # disable chromecast
     chromecast_nu=`iptables -t nat -L PREROUTING -v -n --line-numbers | grep "dpt:53" | awk '{print $1}'`
-	if [ -n "$chromecast_nu" ]; then
+    if [ -n "$chromecast_nu" ]; then
         iptables -t nat -D PREROUTING $chromecast_nu >/dev/null 2>&1
     fi
 }
 
 create_dnsmasq_conf() {
     [ ! -L "$DNSMASQ_POSTCONF" ] && ln -sf /koolshare/configs/ssx_dnsmasq.postconf $DNSMASQ_POSTCONF
-    echo "server=/$server/$DNS" >> $SERVER_DNSMASQ_CONFIG
+    echo "server=/$server/$DNS" >> $SSX_SERVER_DNSMASQ_CONFIG
     if [ -n "$doh_server" ]; then
         doh_server_host=`echo $doh_server | awk -F/ '{print $3}'`
         if [ "$doh_server_host" != "$server" ]; then
-            echo "server=/$doh_server_host/$DNS" >> $SERVER_DNSMASQ_CONFIG
+            echo "server=/$doh_server_host/$DNS" >> $SSX_SERVER_DNSMASQ_CONFIG
         fi
     else
-        echo "server=/mozilla.cloudflare-dns.com/$DNS" >> $SERVER_DNSMASQ_CONFIG
+        echo "server=/mozilla.cloudflare-dns.com/$DNS" >> $SSX_SERVER_DNSMASQ_CONFIG
     fi
-    cat /koolshare/configs/china-domains.txt | sed "s/^/server=&\/./g" | sed "s/$/\/&$DNS/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CHINA_DNSMASQ_CONFIG
+    cat /koolshare/configs/china-domains.txt | sed "s/^/server=&\//g" | sed "s/$/\/&$DNS/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CHINA_DNSMASQ_CONFIG
     [ ! -L "$GFWLIST_DNSMASQ_CONFIG" ] && ln -sf /koolshare/configs/gfwlist.conf $GFWLIST_DNSMASQ_CONFIG
-    if [ -n "$ssx_custom_domains" ]; then
-        echo "$ssx_custom_domains" | sed "s/^/server=&\/./g" | sed "s/$/\/127\.0\.0\.1#&$LOCAL_DNS_PORT/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CUSTOM_DNSMASQ_CONFIG
-        echo "$ssx_custom_domains" | sed "s/^/ipset=&\/./g" | sed "s/$/\/custom/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CUSTOM_DNSMASQ_CONFIG
+    if [ -n "$ssx_blacklist_domains" ]; then
+        echo "# blacklist domains" >> $BLACKLIST_DNSMASQ_CONFIG
+        for blacklist_domain in $ssx_blacklist_domains
+        do
+            domain=`echo $blacklist_domain | sed 's/[ \t\r\n]*$//g' | sed "s/^www\.//gi" | grep -E "^[# a-zA-Z0-9\-\.]+$"`
+            if [ -n "$domain" ]; then
+                echo "server=/.$domain/127.0.0.1#$PROXY_DNS_PORT" >> $BLACKLIST_DNSMASQ_CONFIG
+                echo "ipset=/.$domain/blacklist" >> $BLACKLIST_DNSMASQ_CONFIG
+            fi
+        done
     fi
 }
 
 flush_dnsmasq_conf() {
     rm -f $DNSMASQ_POSTCONF
-    rm -f $SERVER_DNSMASQ_CONFIG
+    rm -f $SSX_SERVER_DNSMASQ_CONFIG
     rm -f $CHINA_DNSMASQ_CONFIG
     rm -f $GFWLIST_DNSMASQ_CONFIG
-    rm -f $CUSTOM_DNSMASQ_CONFIG
+    rm -f $BLACKLIST_DNSMASQ_CONFIG
 }
 
 start_ssx() {
