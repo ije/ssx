@@ -7,22 +7,17 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
+	"github.com/ije/gox/cache"
 	"golang.org/x/net/dns/dnsmessage"
 )
 
 type DNSServer struct {
 	DohServer  string
 	Port       uint16
-	cache      sync.Map
+	cache      cache.Cache
 	httpClient *http.Client
-}
-
-type DNSCache struct {
-	Data    []byte
-	Expires int64
 }
 
 func (s *DNSServer) Serve() (err error) {
@@ -32,14 +27,21 @@ func (s *DNSServer) Serve() (err error) {
 	}
 	defer conn.Close()
 
+	if s.cache == nil {
+		s.cache, err = cache.New("memory?gcInterval=1h")
+		if err != nil {
+			return
+		}
+	}
+
 	for {
-		var raw [512]byte
-		n, addr, err := conn.ReadFromUDP(raw[:512])
+		buf := make([]byte, 512)
+		n, addr, err := conn.ReadFromUDP(buf)
 		if err != nil {
 			log.Println("[error] DNSServer: read upd packet:", err)
 			continue
 		}
-		go s.proxyDNS(conn, addr, raw[:n])
+		go s.proxyDNS(conn, addr, buf[:n])
 	}
 }
 
@@ -47,49 +49,38 @@ func (s *DNSServer) proxyDNS(conn *net.UDPConn, addr *net.UDPAddr, raw []byte) {
 	var msg dnsmessage.Message
 	err := msg.Unpack(raw)
 	if err != nil {
-		log.Println("[error] DNSServer: can not unpack dns:", err)
+		log.Println("[error] DNSServer: unpack dns message:", err)
 		return
 	}
 	packed, err := msg.Pack()
 	if err != nil {
-		log.Println("[error] DNSServer: can not pack dns:", err)
+		log.Println("[error] DNSServer: pack dns:", err)
 		return
 	}
 
 	query := base64.RawURLEncoding.EncodeToString(packed)
-	v, ok := s.cache.Load(query)
-	if ok {
-		if c, ok := v.(DNSCache); ok {
-			_, err = conn.WriteToUDP(c.Data, addr)
-			if err != nil {
-				log.Printf("[error] DNSServer: could not write to udp connection: %s", err)
-				return
-			}
-			conn = nil
-			if c.Expires > time.Now().Unix() {
-				log.Printf("[debug] DNSServer: get data from cache: %s", query)
-				return
-			}
+
+	cachedRet, err := s.cache.Get(query)
+	if err == nil {
+		_, err = conn.WriteToUDP(cachedRet, addr)
+		if err != nil {
+			log.Printf("[error] DNSServer: write upd packet: %s", err)
 		}
+		log.Printf("[debug] DNSServer: cache hit by %s", query)
+		return
 	}
 
 	ret, err := s.queryDNS(query)
 	if err != nil {
-		log.Printf("[error] DNSServer: %s", err)
+		log.Printf("[error] DNSServer: queryDNS: %s", err)
 		return
 	}
+	s.cache.SetTemp(query, ret, time.Hour)
 
-	if conn != nil {
-		_, err = conn.WriteToUDP(ret, addr)
-		if err != nil {
-			log.Printf("[error] DNSServer: could not write to udp connection: %s", err)
-		}
+	_, err = conn.WriteToUDP(ret, addr)
+	if err != nil {
+		log.Printf("[error] DNSServer: write upd packet: %s", err)
 	}
-
-	s.cache.Store(query, DNSCache{
-		Data:    ret,
-		Expires: time.Now().Unix() + 3600,
-	})
 }
 
 func (s *DNSServer) queryDNS(query string) (ret []byte, err error) {
