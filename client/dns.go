@@ -61,25 +61,10 @@ func (s *DNSServer) proxyDNS(conn *net.UDPConn, addr *net.UDPAddr, raw []byte) {
 		return
 	}
 
-	var do bool
-	var ttl time.Duration
-
 	now := time.Now().UTC()
-
 	mt, opt := response.Typify(m, now)
-	if opt != nil {
-		do = opt.Do()
-	}
-
-	msgTTL := dnsutil.MinimalTTL(m, mt)
-	if mt == response.ServerError {
-		ttl = dnsutil.MinimalDefaultTTL
-	} else if mt == response.NameError || mt == response.NoData {
-		ttl = dnsutil.ComputeTTL(msgTTL, dnsutil.MinimalDefaultTTL, dnsutil.MaximumDefaulTTL/2)
-	} else {
-		ttl = dnsutil.ComputeTTL(msgTTL, 5*time.Minute, dnsutil.MaximumDefaulTTL)
-	}
-
+	ttl := time.Hour
+	do := opt != nil && opt.Do()
 	hasKey, key := dnsutil.GetCacheKey(m, mt, do)
 	if hasKey {
 		v, ok := s.cache.Load(key)
@@ -87,18 +72,13 @@ func (s *DNSServer) proxyDNS(conn *net.UDPConn, addr *net.UDPAddr, raw []byte) {
 			i := v.(*dnsutil.CacheItem)
 			if i.TTL(now) > 0 {
 				packed, _ := i.ToMsg(m, now).Pack()
-				_, err = conn.WriteToUDP(packed, addr)
-				if err != nil {
-					log.Printf("[error] DNS: write upd packet: %v", err)
-				}
+				conn.WriteToUDP(packed, addr)
 				log.Printf("[debug] DNS: cache hit by %v", dns.Name(m.Question[0].Name))
 				return
 			}
 			s.cache.Delete(key)
 		}
 	}
-
-	log.Println("[debug] DNS:", dns.Name(m.Question[0].Name), key, mt, ttl)
 
 	ret, err := s.queryDNS(m)
 	if err != nil {
@@ -119,10 +99,9 @@ func (s *DNSServer) proxyDNS(conn *net.UDPConn, addr *net.UDPAddr, raw []byte) {
 	}
 
 	packed, _ := i.ToMsg(m, now).Pack()
-	_, err = conn.WriteToUDP(packed, addr)
-	if err != nil {
-		log.Printf("[error] DNS: write upd packet: %s", err)
-	}
+	conn.WriteToUDP(packed, addr)
+
+	log.Println("[debug] DNS: query", dns.Name(m.Question[0].Name), mt, "token", time.Now().UTC().Sub(now))
 }
 
 func (s *DNSServer) queryDNS(msg *dns.Msg) (ret []byte, err error) {

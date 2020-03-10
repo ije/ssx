@@ -54,7 +54,7 @@ func Run(server string, ssl bool, socksPort uint16, transproxyPort uint16, dnsPo
 				time.Sleep(time.Second / 10)
 			}
 		}()
-		log.Println("dns proxy enable, doh server:", dohServer)
+		log.Println("dns proxy enable, doh by", dohServer)
 	}
 
 	c := &SocksClient{

@@ -31,21 +31,6 @@ func (c *SocksClient) Serve() (err error) {
 			return
 		}
 
-		tcpConn, ok := conn.(*net.TCPConn)
-		if ok {
-			err = tcpConn.SetKeepAlive(true)
-			if err != nil {
-				log.Println("client: failed to set KeepAlive on TCP connection")
-				return
-			}
-
-			err = tcpConn.SetKeepAlivePeriod(time.Hour)
-			if err != nil {
-				log.Println("client: failed to set KeepAlivePeriod on TCP connection")
-				return
-			}
-		}
-
 		go c.handleConn(conn)
 	}
 }

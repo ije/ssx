@@ -2,7 +2,7 @@ package client
 
 import "text/template"
 
-const pacTS = `
+const pacJS = `
 var hasOwnProperty = Object.hasOwnProperty;
 var proxy = '{{ .proxy }}; DIRECT;';
 var direct = 'DIRECT;';
@@ -36,5 +36,5 @@ function FindProxyForURL(url, host) {
 var pacTpl *template.Template
 
 func init() {
-	pacTpl = template.Must(template.New("pac").Parse(pacTS))
+	pacTpl = template.Must(template.New("pac").Parse(pacJS))
 }
