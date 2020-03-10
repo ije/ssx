@@ -47,7 +47,7 @@ func Run(server string, ssl bool, socksPort uint16, transproxyPort uint16, dnsPo
 				Port:      dnsPort,
 			}
 			for {
-				err := s.Serve()
+				err := s.ServeDNS()
 				if err != nil {
 					log.Println("client(dns-proxy) shutdown:", err)
 				}

@@ -15,4 +15,5 @@ fi
 export GOARCH=$goarch
 
 echo "--- compiling the ssx-server(${goos}_$goarch)..."
-go build -o ssx-server server-main.go
+cd server-main
+go build -o ssx-server main.go

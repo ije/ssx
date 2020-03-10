@@ -4,10 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
 	"ssx/client"
 )
 
-const version = "1.2.0"
+const version = "1.2.2"
 
 func main() {
 	server := flag.String("server", "127.0.0.1", "server address")

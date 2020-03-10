@@ -3,6 +3,7 @@
 # load path environment in dbus databse
 eval `dbus export ssx`
 source /koolshare/scripts/base.sh
+platform=$(uname -m)
 lan_ipaddr=$(nvram get lan_ipaddr)
 server=`echo $ssx_server | grep -E "[a-zA-Z0-9\-\.]+"`
 doh_server=`echo $ssx_doh_server | grep -E "https?://[a-zA-Z0-9\-\.]+.*"`
@@ -19,15 +20,10 @@ GFWLIST_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/gfwlist.conf
 BLACKLIST_DNSMASQ_CONFIG=/jffs/configs/dnsmasq.d/blacklist.conf
 
 # check platform
-case $(uname -m) in
-    armv7l)
-        echo "start installing ssx..."
-    ;;
-    *)
-        echo "[error] ssx can't run in \"$(uname -m)\", needs koolshare merlin armv7l!"
-        exit 1
-    ;;
-esac
+if [ "$platform" != "armv7l" ]; then
+    echo "[error] ssx can't run in '$platform', needs armv7l!"
+    exit 1
+fi
 
 get_lan_cidr() {
     netmask=`nvram get lan_netmask`
@@ -127,7 +123,10 @@ flush_nat() {
 }
 
 create_dnsmasq_conf() {
+    # dnsmasq postconf
     [ ! -L "$DNSMASQ_POSTCONF" ] && ln -sf /koolshare/configs/ssx_dnsmasq.postconf $DNSMASQ_POSTCONF
+    
+    # ssx servers
     echo "server=/$server/$DNS" >> $SSX_SERVER_DNSMASQ_CONFIG
     if [ -n "$doh_server" ]; then
         doh_server_host=`echo $doh_server | awk -F/ '{print $3}'`
@@ -137,13 +136,19 @@ create_dnsmasq_conf() {
     else
         echo "server=/mozilla.cloudflare-dns.com/$DNS" >> $SSX_SERVER_DNSMASQ_CONFIG
     fi
+
+    # china domains
     cat /koolshare/configs/china-domains.txt | sed "s/^/server=&\//g" | sed "s/$/\/&$DNS/g" | sort | awk '{if ($0!=line) print;line=$0}' >> $CHINA_DNSMASQ_CONFIG
+    
+    # gfwlist domains
     [ ! -L "$GFWLIST_DNSMASQ_CONFIG" ] && ln -sf /koolshare/configs/gfwlist.conf $GFWLIST_DNSMASQ_CONFIG
+
+    # blacklist domains
     if [ -n "$ssx_blacklist_domains" ]; then
         echo "# blacklist domains" >> $BLACKLIST_DNSMASQ_CONFIG
-        for blacklist_domain in $ssx_blacklist_domains
+        for t in $ssx_blacklist_domains
         do
-            domain=`echo $blacklist_domain | sed 's/[ \t\r\n]*$//g' | sed "s/^www\.//gi" | grep -E "^[# a-zA-Z0-9\-\.]+$"`
+            domain=`echo $t | sed 's/[ \t\r\n]*$//g' | sed "s/^www\.//gi" | grep -E "^[a-zA-Z0-9\-\.]+$"`
             if [ -n "$domain" ]; then
                 echo "server=/.$domain/127.0.0.1#$PROXY_DNS_PORT" >> $BLACKLIST_DNSMASQ_CONFIG
                 echo "ipset=/.$domain/blacklist" >> $BLACKLIST_DNSMASQ_CONFIG
@@ -179,11 +184,6 @@ start_ssx() {
     create_dnsmasq_conf
     service restart_dnsmasq
     apply_nat_rules
-
-    # try to create start_up file
-    if [ ! -L "/koolshare/init.d/S97ssx.sh" ]; then 
-        ln -sf /koolshare/scripts/ssx.sh /koolshare/init.d/S97ssx.sh
-    fi
 }
 
 stop_ssx() {

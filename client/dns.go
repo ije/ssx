@@ -7,83 +7,29 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
-	"github.com/ije/gox/cache"
-	"golang.org/x/net/dns/dnsmessage"
+	"ssx/dns/dnsutil"
+	"ssx/dns/response"
+
+	"github.com/miekg/dns"
 )
 
 type DNSServer struct {
 	DohServer  string
 	Port       uint16
-	cache      cache.Cache
+	cache      sync.Map
 	httpClient *http.Client
 }
 
-func (s *DNSServer) Serve() (err error) {
+func (s *DNSServer) ServeDNS() (err error) {
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{Port: int(s.Port)})
 	if err != nil {
 		return
 	}
 	defer conn.Close()
 
-	if s.cache == nil {
-		s.cache, err = cache.New("memory?gcInterval=1h")
-		if err != nil {
-			return
-		}
-	}
-
-	for {
-		buf := make([]byte, 512)
-		n, addr, err := conn.ReadFromUDP(buf)
-		if err != nil {
-			log.Println("[error] DNSServer: read upd packet:", err)
-			continue
-		}
-		go s.proxyDNS(conn, addr, buf[:n])
-	}
-}
-
-func (s *DNSServer) proxyDNS(conn *net.UDPConn, addr *net.UDPAddr, raw []byte) {
-	var msg dnsmessage.Message
-	err := msg.Unpack(raw)
-	if err != nil {
-		log.Println("[error] DNSServer: unpack dns message:", err)
-		return
-	}
-	packed, err := msg.Pack()
-	if err != nil {
-		log.Println("[error] DNSServer: pack dns:", err)
-		return
-	}
-
-	query := base64.RawURLEncoding.EncodeToString(packed)
-
-	cachedRet, err := s.cache.Get(query)
-	if err == nil {
-		_, err = conn.WriteToUDP(cachedRet, addr)
-		if err != nil {
-			log.Printf("[error] DNSServer: write upd packet: %s", err)
-		}
-		log.Printf("[debug] DNSServer: cache hit by %s", query)
-		return
-	}
-
-	ret, err := s.queryDNS(query)
-	if err != nil {
-		log.Printf("[error] DNSServer: queryDNS: %s", err)
-		return
-	}
-	s.cache.SetTemp(query, ret, time.Hour)
-
-	_, err = conn.WriteToUDP(ret, addr)
-	if err != nil {
-		log.Printf("[error] DNSServer: write upd packet: %s", err)
-	}
-}
-
-func (s *DNSServer) queryDNS(query string) (ret []byte, err error) {
 	if s.httpClient == nil {
 		s.httpClient = &http.Client{
 			Transport: &http.Transport{
@@ -96,6 +42,96 @@ func (s *DNSServer) queryDNS(query string) (ret []byte, err error) {
 		}
 	}
 
+	for {
+		buf := make([]byte, 512)
+		n, addr, err := conn.ReadFromUDP(buf)
+		if err != nil {
+			log.Println("[error] DNS: read upd packet:", err)
+			continue
+		}
+		go s.proxyDNS(conn, addr, buf[:n])
+	}
+}
+
+func (s *DNSServer) proxyDNS(conn *net.UDPConn, addr *net.UDPAddr, raw []byte) {
+	m := new(dns.Msg)
+	err := m.Unpack(raw)
+	if err != nil {
+		log.Println("[error] DNS: unpack dns message:", err)
+		return
+	}
+
+	var do bool
+	var ttl time.Duration
+
+	now := time.Now().UTC()
+
+	mt, opt := response.Typify(m, now)
+	if opt != nil {
+		do = opt.Do()
+	}
+
+	msgTTL := dnsutil.MinimalTTL(m, mt)
+	if mt == response.ServerError {
+		ttl = dnsutil.MinimalDefaultTTL
+	} else if mt == response.NameError || mt == response.NoData {
+		ttl = dnsutil.ComputeTTL(msgTTL, dnsutil.MinimalDefaultTTL, dnsutil.MaximumDefaulTTL/2)
+	} else {
+		ttl = dnsutil.ComputeTTL(msgTTL, 5*time.Minute, dnsutil.MaximumDefaulTTL)
+	}
+
+	hasKey, key := dnsutil.GetCacheKey(m, mt, do)
+	if hasKey {
+		v, ok := s.cache.Load(key)
+		if ok {
+			i := v.(*dnsutil.CacheItem)
+			if i.TTL(now) > 0 {
+				packed, _ := i.ToMsg(m, now).Pack()
+				_, err = conn.WriteToUDP(packed, addr)
+				if err != nil {
+					log.Printf("[error] DNS: write upd packet: %v", err)
+				}
+				log.Printf("[debug] DNS: cache hit by %v", dns.Name(m.Question[0].Name))
+				return
+			}
+			s.cache.Delete(key)
+		}
+	}
+
+	log.Println("[debug] DNS:", dns.Name(m.Question[0].Name), key, mt, ttl)
+
+	ret, err := s.queryDNS(m)
+	if err != nil {
+		log.Printf("[error] DNS: queryDNS: %s", err)
+		return
+	}
+
+	respMsg := new(dns.Msg)
+	err = respMsg.Unpack(ret)
+	if err != nil {
+		log.Printf("[error] DNS: parse response messsage: %s", err)
+		return
+	}
+
+	i := dnsutil.NewCacheItem(respMsg, now, ttl)
+	if hasKey {
+		s.cache.Store(key, i)
+	}
+
+	packed, _ := i.ToMsg(m, now).Pack()
+	_, err = conn.WriteToUDP(packed, addr)
+	if err != nil {
+		log.Printf("[error] DNS: write upd packet: %s", err)
+	}
+}
+
+func (s *DNSServer) queryDNS(msg *dns.Msg) (ret []byte, err error) {
+	packed, err := msg.Pack()
+	if err != nil {
+		return
+	}
+
+	query := base64.RawURLEncoding.EncodeToString(packed)
 	url := fmt.Sprintf("%s?dns=%s", s.DohServer, query)
 	r, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {

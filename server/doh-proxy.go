@@ -38,8 +38,7 @@ func queryDNS(dns string) (msg []byte, header http.Header, err error) {
 	r.Header.Set("Accept", "application/dns-message")
 	r.Header.Set("Content-Type", "application/dns-message")
 
-	c := http.Client{}
-	resp, err := c.Do(r)
+	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
 		return
 	}

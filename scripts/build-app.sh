@@ -19,20 +19,21 @@ if [ "$updateConfigs" = "yes" ]; then
 	# todo: update china-domains.txt
 fi
 
-CUR_VERSION=`go run client-main.go -version`
+CUR_VERSION=`go run client-main/main.go -version`
 
 export GOARCH=arm
 export GOARM=5
 export GOOS=linux
 
-echo "compiling ssx-client(${GOOS}_$GOARCH)..."
+echo "compiling ssx-client(${GOOS}_$GOARCH) v${CUR_VERSION}..."
 rm -f ../app/$platform/bin/ssx
-go build -o ../app/$platform/bin/ssx client-main.go
+cd ./client-main
+go build -o ../../app/$platform/bin/ssx main.go
 if [ "$?" != "0" ]; then 
     exit
 fi
 
-cd ../app
+cd ../../app
 mv $platform ssx
 tar -czf ~/Downloads/ssx-${CUR_VERSION}.tar.gz ssx
 mv ssx $platform

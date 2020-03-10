@@ -36,9 +36,9 @@ if [ "$init" = "yes" ]; then
     fi
 fi
 
-scp -P $hostSSHPort ssx-server $loginUser@$host:/tmp/ssx-server
+scp -P $hostSSHPort server-main/ssx-server $loginUser@$host:/tmp/ssx-server
 if [ "$?" != "0" ]; then
-    rm ssx-server
+    rm server-main/ssx-server
     exit
 fi
 
@@ -61,4 +61,4 @@ ssh -p $hostSSHPort $loginUser@$host << EOF
     fi
 EOF
 
-rm ssx-server
+rm server-main/ssx-server
