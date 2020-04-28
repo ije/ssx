@@ -2,22 +2,22 @@ package client
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"ssx/wsconn"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/ije/gox/utils"
 )
 
-type SocksClient struct {
+type ProxyClient struct {
 	ServerURL string
 	SSL       bool
 	Port      uint16
 }
 
-func (c *SocksClient) Serve() (err error) {
+func (c *ProxyClient) Serve() (err error) {
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", c.Port))
 	if err != nil {
 		return
@@ -35,12 +35,12 @@ func (c *SocksClient) Serve() (err error) {
 	}
 }
 
-func (c *SocksClient) handleConn(conn net.Conn) (err error) {
+func (c *ProxyClient) handleConn(conn net.Conn) (err error) {
 	defer conn.Close()
 
 	dialer := &websocket.Dialer{
-		ReadBufferSize:   4 * 1024,
-		WriteBufferSize:  4 * 1024,
+		ReadBufferSize:   8 * 1024,
+		WriteBufferSize:  8 * 1024,
 		HandshakeTimeout: 15 * time.Second,
 	}
 	proto := "ws"
@@ -56,18 +56,6 @@ func (c *SocksClient) handleConn(conn net.Conn) (err error) {
 	wsConn := wsconn.New(ws)
 	defer wsConn.Close()
 
-	err = c.proxyConn(conn, wsConn)
+	err = utils.ProxyConn(conn, wsConn, 0)
 	return
-}
-
-func (c *SocksClient) proxyConn(conn net.Conn, rConn net.Conn) error {
-	closeCh := make(chan error, 2)
-	go c.copyConn(conn, rConn, closeCh)
-	go c.copyConn(rConn, conn, closeCh)
-	return <-closeCh
-}
-
-func (c *SocksClient) copyConn(dst net.Conn, src net.Conn, closeCh chan error) {
-	_, err := io.Copy(dst, src)
-	closeCh <- err
 }

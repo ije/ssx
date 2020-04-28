@@ -8,15 +8,16 @@ import (
 	"ssx/client"
 )
 
-const version = "1.2.3"
+const version = "1.2.4"
 
 func main() {
 	server := flag.String("server", "127.0.0.1", "server address")
 	ssl := flag.Bool("ssl", false, "use ssl connection")
-	socksPort := flag.Int("socks", 1086, "local socks proxy port")
-	transporxyPort := flag.Int("transporxy", 0, "local tpc transparent proxy port")
-	dnsPort := flag.Int("dns", 0, "dns proxy port")
-	pacPort := flag.Int("pac", 0, "local pac server port")
+	socksPort := flag.Int("socks-port", 1086, "socks proxy port")
+	httpproxyPort := flag.Int("httpproxy-port", 0, "http proxy port")
+	transporxyPort := flag.Int("transporxy-proxy", 0, "tpc transparent proxy port")
+	pacPort := flag.Int("pac-port", 0, "pac server port")
+	dnsPort := flag.Int("dns-port", 0, "dns proxy port")
 	dohServer := flag.String("doh-server", "https://mozilla.cloudflare-dns.com/dns-query", "doh server")
 	gfwlistURI := flag.String("gfwlist-uri", "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt", "gfwlist URI")
 	printGFWList := flag.Bool("gfwlist", false, "print gfwlist")
@@ -43,5 +44,5 @@ func main() {
 		return
 	}
 
-	client.Run(*server, *ssl, uint16(*socksPort), uint16(*transporxyPort), uint16(*dnsPort), *dohServer, uint16(*pacPort), *gfwlistURI)
+	client.Run(*server, *ssl, uint16(*socksPort), uint16(*httpproxyPort), uint16(*transporxyPort), uint16(*dnsPort), *dohServer, uint16(*pacPort), *gfwlistURI)
 }

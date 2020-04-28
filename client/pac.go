@@ -8,6 +8,7 @@ import (
 type PACServer struct {
 	SocksPort  uint16
 	GFWListURI string
+	CustomList []string
 	gfwlist    map[string]struct{}
 }
 
@@ -18,10 +19,15 @@ func (s *PACServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	custom := map[string]struct{}{}
+	for _, domain := range s.CustomList {
+		custom[domain] = struct{}{}
+	}
+
 	w.Header().Set("Content-Type", "application/x-ns-proxy-autoconfig")
 	pacTpl.Execute(w, map[string]interface{}{
 		"gfwlist": gfwlist,
-		"custom":  map[string]interface{}{},
+		"custom":  custom,
 		"proxy":   fmt.Sprintf("SOCKS5 127.0.0.1:%d", s.SocksPort),
 	})
 }

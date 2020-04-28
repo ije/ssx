@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func Run(server string, ssl bool, socksPort uint16, transproxyPort uint16, dnsPort uint16, dohServer string, pacPort uint16, gfwlistURI string) {
+func Run(server string, ssl bool, socksPort uint16, httpProxyPort uint16, transproxyPort uint16, dnsPort uint16, dohServer string, pacPort uint16, gfwlistURI string) {
 	if transproxyPort > 0 {
 		go func() {
 			transproxy := &Transproxy{
@@ -17,7 +17,7 @@ func Run(server string, ssl bool, socksPort uint16, transproxyPort uint16, dnsPo
 			}
 			for {
 				transproxy.Serve()
-				time.Sleep(time.Second / 10)
+				time.Sleep(time.Second)
 			}
 		}()
 		log.Println("transproxy enable")
@@ -34,10 +34,10 @@ func Run(server string, ssl bool, socksPort uint16, transproxyPort uint16, dnsPo
 			}
 			for {
 				s.ListenAndServe()
-				time.Sleep(time.Second / 10)
+				time.Sleep(time.Second)
 			}
 		}()
-		log.Println("pac server enable")
+		log.Printf("pac server enable: http://localhost:%d/proxy.pac", pacPort)
 	}
 
 	if dnsPort > 0 {
@@ -51,23 +51,41 @@ func Run(server string, ssl bool, socksPort uint16, transproxyPort uint16, dnsPo
 				if err != nil {
 					log.Println("client(dns-proxy) shutdown:", err)
 				}
-				time.Sleep(time.Second / 10)
+				time.Sleep(time.Second)
 			}
 		}()
 		log.Println("dns proxy enable, doh by", dohServer)
 	}
 
-	c := &SocksClient{
+	if httpProxyPort > 0 {
+		go func() {
+			c := &ProxyClient{
+				ServerURL: strings.TrimRight(server, "/") + "/ssx/http",
+				SSL:       ssl,
+				Port:      httpProxyPort,
+			}
+			for {
+				err := c.Serve()
+				if err != nil {
+					log.Println("client(http-proxy) shutdown:", err)
+				}
+				time.Sleep(time.Second)
+			}
+		}()
+		log.Printf("http proxy enable: http://localhost:%d", httpProxyPort)
+	}
+
+	c := &ProxyClient{
 		ServerURL: strings.TrimRight(server, "/") + "/ssx/socks",
 		SSL:       ssl,
 		Port:      socksPort,
 	}
-	log.Println("start socks5 proxy, server:", server, "ssl:", ssl)
+	log.Printf("start socks5 proxy, server: %s, ssl: %v", server, ssl)
 	for {
 		err := c.Serve()
 		if err != nil {
 			log.Println("client(socks-proxy) shutdown:", err)
 		}
-		time.Sleep(time.Second / 10)
+		time.Sleep(time.Second)
 	}
 }
